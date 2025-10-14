@@ -222,6 +222,7 @@
     $("#penulis").value    = d.penulis||"";
     $("#penerjemah").value = d.penerjemah||"";
     $("#penerbit").value   = d.penerbit||"";
+    $("#status").value     = d.status || ""; 
     $("#halaman").value    = d.halaman||0;
   }
   async function saveMeta(){
@@ -234,6 +235,7 @@
         penulis: $("#penulis").value.trim(),
         penerjemah: $("#penerjemah").value.trim(),
         penerbit: $("#penerbit").value.trim(),
+        status: $("#status").value.trim(),
         ...(Number($("#halaman").value)? {halaman:Number($("#halaman").value)} : {})
       }, { merge:true });
       toast("Metadata disimpan","ok");
