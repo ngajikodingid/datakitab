@@ -1,292 +1,503 @@
 <!doctype html>
 <html lang="id">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Generator JSON Kitab | Santrilogy</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Terjemah Kitab — Firestore (UX+Responsive)</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#f8fafc; --fg:#111827; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb;
+    --bg:#0b0f19; --card:#0f1526; --line:#1d2742; --txt:#e6ecff; --muted:#aab7d4; --accent:#59a6ff;
+    --ok:#22c55e; --err:#ef4444; --warn:#f59e0b;
   }
-  html,body{background:var(--bg);color:var(--fg);font:14px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif;margin:0}
-  header{max-width:1100px;margin:18px auto 8px;padding:0 16px}
-  header h1{font-size:20px;margin:0 0 4px;font-weight:800}
-  header p{margin:0;color:var(--muted)}
-  .wrap{max-width:1100px;margin:8px auto 32px;padding:0 16px;display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
-  @media (max-width:980px){.wrap{grid-template-columns:1fr}}
-  .card{background:#fff;border:1px solid var(--line);border-radius:14px}
-  .card h2{font-size:16px;padding:12px 14px;margin:0;border-bottom:1px solid var(--line)}
-  .card .body{padding:14px}
-  .row{display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:center;margin-bottom:10px}
-  .row label{color:var(--muted)}
-  input[type="text"],input[type="number"],textarea,select{
-    width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;color:var(--fg)
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f6f8fb; --card:#ffffff; --line:#e5e7eb; --txt:#0b1220; --muted:#64748b; --accent:#2563eb; }
   }
-  textarea{min-height:96px;resize:vertical}
-  .help{color:var(--muted);font-size:12px;margin-top:4px}
-  .btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer}
-  .btn:hover{background:#f3f4f6}
-  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--txt);font:14px/1.65 system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif}
+  a{color:var(--accent)}
+  .container{max-width:1200px;margin:0 auto;padding:72px 16px 80px}
+  header.topbar{
+    position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--line);
+    display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 16px;
+  }
+  .brand{font-weight:800}
+  .sub{color:var(--muted);font-size:12px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .chip{border:1px solid var(--line);border-radius:999px;padding:6px 10px;font-size:12px}
+  .btn{
+    border:1px solid var(--line);background:var(--card);color:var(--txt);
+    border-radius:10px;padding:8px 12px;cursor:pointer;display:inline-flex;gap:8px;align-items:center
+  }
+  .btn:hover{background:color-mix(in srgb, var(--card) 85%, #ffffff 15%)}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.warn{border-color:color-mix(in srgb,var(--err) 50%, var(--line) 50%);color:var(--err)}
   .btn.ghost{background:transparent}
-  .stack{display:flex;gap:8px;flex-wrap:wrap}
-  .page{border:1px dashed var(--line);border-radius:12px;padding:12px;margin-bottom:12px;background:#fbfdff}
-  .page-head{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
-  .split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  .grid{
+    display:grid;gap:16px;
+    grid-template-columns:1fr;
+  }
+  @media(min-width:980px){
+    .grid{grid-template-columns:320px 1fr}
+  }
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .card h2{margin:0;padding:12px 14px;border-bottom:1px solid var(--line);font-size:15px}
+  .card .body{padding:14px}
+  .row{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;margin-bottom:10px}
+  .row label{color:var(--muted)}
+  input[type=text],input[type=number],textarea,select{
+    width:100%;border:1px solid var(--line);background:transparent;color:var(--txt);
+    border-radius:10px;padding:9px 12px
+  }
+  textarea{min-height:84px;resize:vertical}
+  .muted{color:var(--muted);font-size:12px}
+
+  /* pages */
+  #tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:8px}
+  #search{max-width:360px}
+  .pages{display:grid;gap:12px}
+  details.page{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:color-mix(in srgb,var(--card) 92%, #000 8%)}
+  details.page summary{
+    list-style:none;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;
+    display:grid;grid-template-columns:64px 1fr 240px auto;gap:8px;align-items:center
+  }
+  details.page[open] summary{border-bottom-color:transparent}
+  .idx{width:60px}
+  .aid{width:240px}
+  .summary-col{display:flex;gap:8px;align-items:center}
+  .summary-title{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .summary-actions{display:flex;gap:6px}
+  .page .body{padding:12px;border-top:1px solid var(--line)}
+  .lines{display:grid;gap:8px}
+  .line{display:grid;gap:8px;grid-template-columns:1fr 1fr auto}
+  .line textarea{min-height:62px}
   .rtl{direction:rtl;text-align:right;font-family:"Amiri",serif}
-  .toolbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px}
-  .lines .line{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:8px 0}
-  .lines .line button{height:38px}
-  .out{width:100%;min-height:320px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-  .footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+  .mini{font-size:12px;color:var(--muted)}
+  .section-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:10px}
+
+  /* toast */
+  .toast{
+    position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:60
+  }
+  .toast .item{
+    background:var(--card);border:1px solid var(--line);padding:10px 12px;border-radius:10px;min-width:240px
+  }
+  .item.ok{border-color:color-mix(in srgb,var(--ok) 40%, var(--line) 60%)}
+  .item.err{border-color:color-mix(in srgb,var(--err) 40%, var(--line) 60%)}
+  /* fab */
+  .fab{
+    position:fixed;right:16px;bottom:84px;z-index:55
+  }
+
+  /* loader */
+  .spinner{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);z-index:70;
+           align-items:center;justify-content:center}
+  .spinner .dot{width:12px;height:12px;border-radius:999px;background:#fff;opacity:.9;margin:6px;animation:bl 1s infinite alternate}
+  .spinner .dot:nth-child(2){animation-delay:.2s}.spinner .dot:nth-child(3){animation-delay:.4s}
+  @keyframes bl{from{transform:scale(.8);opacity:.5}to{transform:scale(1.3);opacity:1}}
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Amiri&display=swap" rel="stylesheet">
 </head>
 <body>
-<header>
-  <h1>Generator JSON Kitab</h1>
-  <p>Buat, edit, dan unduh file JSON untuk halaman terjemah kitab Santrilogy.</p>
+<header class="topbar">
+  <div>
+    <div class="brand">Admin Terjemah Kitab</div>
+    <div class="sub">Firestore editor • UX+Responsive</div>
+  </div>
+  <div class="bar">
+    <div id="userBox" class="chip">Belum login</div>
+    <button id="btnLogin" class="btn">Login Google</button>
+    <button id="btnLogout" class="btn warn">Logout</button>
+  </div>
 </header>
 
-<div class="wrap">
-  <!-- LEFT: FORM -->
-  <section class="card">
-    <h2>Metadata Kitab</h2>
-    <div class="body">
-      <div class="row"><label>Judul</label><input id="judul" type="text" placeholder="Terjemah Kitab Al-Ajrumiyyah"></div>
-      <div class="row"><label>Penulis</label><input id="penulis" type="text" placeholder="Ibn Ajurrum"></div>
-      <div class="row"><label>Penerjemah</label><input id="penerjemah" type="text" placeholder="Nama Penerjemah"></div>
-      <div class="row"><label>Penerbit</label><input id="penerbit" type="text" placeholder="Santrilogy Press"></div>
-      <div class="help">Jumlah halaman akan terisi otomatis dari banyaknya halaman di bawah.</div>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>Impor / Ekspor</h2>
-    <div class="body">
-      <div class="stack">
-        <input id="file" type="file" accept="application/json" class="btn" />
-        <button class="btn" id="btnImport">Impor JSON</button>
-        <button class="btn" id="btnSample">Contoh Data</button>
-      </div>
-      <div class="toolbar">
-        <button class="btn" id="btnCopy">Salin JSON</button>
-        <button class="btn" id="btnDownload">Unduh .json</button>
-        <button class="btn" id="btnPretty">Pretty</button>
-        <button class="btn" id="btnMinify">Minify</button>
-      </div>
-    </div>
-  </section>
-
-  <section class="card" style="grid-column:1/-1">
-    <h2>Halaman & Isi</h2>
-    <div class="body">
-      <div class="stack" style="justify-content:space-between">
-        <div class="help">Tambahkan halaman. Tiap baris terdiri dari sepasang Arab & Terjemah.</div>
-        <div class="stack">
-          <button class="btn" id="btnAddPage">+ Tambah Halaman</button>
-          <button class="btn" id="btnClearPages">Hapus Semua Halaman</button>
+<div class="container">
+  <div class="grid">
+    <!-- SIDEBAR -->
+    <section class="card">
+      <h2>Proyek & Kitab</h2>
+      <div class="body">
+        <div class="row"><label>Slug</label><input id="slug" type="text" placeholder="ajrumiyyah"></div>
+        <div class="row"><label>Actions</label>
+          <div class="bar">
+            <button id="btnLoadAll" class="btn pri">Muat</button>
+            <button id="btnReindex" class="btn">Reindex</button>
+            <button id="btnSaveAll" class="btn">Simpan Semua</button>
+          </div>
+        </div>
+        <p class="muted">Path: <code>kitab/&lt;slug&gt;</code> + subkoleksi <code>pages</code>.</p>
+        <hr style="border:none;border-top:1px solid var(--line);margin:12px 0">
+        <div class="row"><label>Cari Halaman</label><input id="search" type="text" placeholder="Ketik judul / id…"></div>
+        <div class="bar">
+          <button id="btnExpand" class="btn">Expand All</button>
+          <button id="btnCollapse" class="btn">Collapse All</button>
+          <button id="btnAddPage" class="btn">+ Tambah Halaman</button>
         </div>
       </div>
-      <div id="pages"></div>
-      <div class="toolbar">
-        <button class="btn primary" id="btnGenerate">Hasilkan JSON</button>
-        <button class="btn" id="btnSaveLocal">Simpan Lokal</button>
-        <button class="btn" id="btnLoadLocal">Muat Lokal</button>
-        <button class="btn" id="btnClearLocal">Hapus Lokal</button>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <!-- RIGHT: OUTPUT -->
-  <section class="card">
-    <h2>Output JSON</h2>
+    <!-- MAIN -->
+    <section class="card">
+      <h2>Metadata Kitab</h2>
+      <div class="body">
+        <div class="row"><label>Judul</label><input id="judul" type="text"></div>
+        <div class="row"><label>Penulis</label><input id="penulis" type="text"></div>
+        <div class="row"><label>Penerjemah</label><input id="penerjemah" type="text"></div>
+        <div class="row"><label>Penerbit</label><input id="penerbit" type="text"></div>
+        <div class="row"><label>Halaman</label><input id="halaman" type="number" min="0" placeholder="auto dari pages"></div>
+        <div class="bar" style="justify-content:flex-end">
+          <button id="btnSaveMeta" class="btn pri">Simpan Metadata</button>
+          <button id="btnReloadMeta" class="btn">Muat Ulang</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:16px">
+    <h2>Halaman (Pages)</h2>
     <div class="body">
-      <textarea id="output" class="out" spellcheck="false" placeholder='Klik "Hasilkan JSON"…'></textarea>
-      <div class="footer">Format mengikuti skema: {"kitab":{...},"pages":[{judul,id,arabic[],translation[]}...]}</div>
+      <div id="tools">
+        <span class="muted">Klik ringkasan untuk membuka/menutup isi halaman. Simpan per halaman atau Simpan Semua.</span>
+      </div>
+      <div id="pages" class="pages"></div>
     </div>
   </section>
 </div>
 
-<script>
-/* ----------------- Utilities ----------------- */
-const $ = s => document.querySelector(s);
-const pagesEl = $("#pages");
-const outputEl = $("#output");
+<!-- Floating Add (mobile) -->
+<div class="fab">
+  <button id="fabAdd" class="btn pri">+ Halaman</button>
+</div>
 
-function slugify(str){
-  return (str||"")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .replace(/[^A-Za-z0-9\u0621-\u064A]+/g,"-") // keep arabic letters too
-    .replace(/^-+|-+$/g,"").toLowerCase() || "hal-"+Date.now();
-}
+<!-- Toasts & Loader -->
+<div class="toast" id="toast"></div>
+<div class="spinner" id="spinner"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
 
-function createLine(arab="", indo=""){
-  const wrap = document.createElement("div");
-  wrap.className = "line";
-  wrap.innerHTML = `
-    <textarea class="rtl" placeholder="Teks Arab…">${arab}</textarea>
-    <textarea placeholder="Terjemah Indonesia…">${indo}</textarea>
-    <button type="button" class="btn">🗑</button>
-  `;
-  wrap.querySelector("button").onclick = ()=> wrap.remove();
-  return wrap;
-}
+<!-- Firebase v10 -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc,
+    collection, getDocs, addDoc, writeBatch, query, orderBy
+  } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-function createPage(title="", id=""){
-  const page = document.createElement("div");
-  page.className = "page";
-  const newId = id || slugify(title || "halaman");
-  page.innerHTML = `
-    <div class="page-head">
-      <input type="text" class="p-title" placeholder="Judul halaman (boleh Arab)" value="${title}">
-      <input type="text" class="p-id" placeholder="id (anchor/slug)" value="${newId}">
-      <div class="stack">
-        <button type="button" class="btn add-line">+ Tambah Baris</button>
-        <button type="button" class="btn dup-page">Duplikat</button>
-        <button type="button" class="btn" style="color:#b91c1c;border-color:#fca5a5" title="Hapus halaman">Hapus</button>
-      </div>
-    </div>
-    <div class="lines"></div>
-  `;
-  const lines = page.querySelector(".lines");
-  page.querySelector(".add-line").onclick = ()=> lines.appendChild(createLine());
-  page.querySelector(".dup-page").onclick = ()=>{
-    const copy = createPage(
-      page.querySelector(".p-title").value,
-      page.querySelector(".p-id").value+"-copy"
-    );
-    // copy existing lines
-    lines.querySelectorAll(".line").forEach(l=>{
-      const a = l.children[0].value, t = l.children[1].value;
-      copy.querySelector(".lines").appendChild(createLine(a,t));
-    });
-    pagesEl.insertBefore(copy, page.nextSibling);
+  /* === CONFIG MAS === */
+  const firebaseConfig = {
+    apiKey: "AIzaSyCco9E-DrkMGaoCXnZsP6a7IA1GwSgvU8k",
+    authDomain: "terjemah-kitab-84103.firebaseapp.com",
+    projectId: "terjemah-kitab-84103",
+    storageBucket: "terjemah-kitab-84103.firebasestorage.app",
+    messagingSenderId: "677836780803",
+    appId: "1:677836780803:web:27cff770af01a4d900a536",
+    measurementId: "G-FRWV8S6X8N"
   };
-  page.querySelector("[title='Hapus halaman']").onclick = ()=> page.remove();
-  // default 1 baris
-  lines.appendChild(createLine());
-  return page;
-}
 
-/* ----------------- Actions ----------------- */
-$("#btnAddPage").onclick = ()=> pagesEl.appendChild(createPage());
-$("#btnClearPages").onclick = ()=> pagesEl.innerHTML = "";
+  /* === INIT === */
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+  const provider = new GoogleAuthProvider();
 
-$("#btnGenerate").onclick = ()=>{
-  const judul = $("#judul").value.trim();
-  const penulis = $("#penulis").value.trim();
-  const penerjemah = $("#penerjemah").value.trim();
-  const penerbit = $("#penerbit").value.trim();
+  /* === DOM helpers === */
+  const $  = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+  const toastEl = $("#toast");
+  const spinEl  = $("#spinner");
+  const pagesEl = $("#pages");
 
-  const pages = [];
-  pagesEl.querySelectorAll(".page").forEach((p,idx)=>{
-    const title = p.querySelector(".p-title").value.trim() || `Halaman ${idx+1}`;
-    const id = (p.querySelector(".p-id").value.trim() || slugify(title));
-    const arabic = [], translation = [];
-    p.querySelectorAll(".line").forEach(line=>{
+  const showSpin = (v=true)=> spinEl.style.display = v ? "flex" : "none";
+  function toast(msg, type=""){
+    const d = document.createElement("div");
+    d.className = `item ${type}`;
+    d.textContent = msg;
+    toastEl.appendChild(d);
+    setTimeout(()=> d.remove(), 3000);
+  }
+
+  /* === AUTH === */
+  onAuthStateChanged(auth, (user)=>{
+    if(user){ $("#userBox").textContent = user.email; $("#userBox").classList.add("chip"); toast("Login: "+user.email,"ok"); }
+    else { $("#userBox").textContent = "Belum login"; toast("Belum login"); }
+  });
+  $("#btnLogin").onclick  = ()=> signInWithPopup(auth, provider).catch(e=> toast("Login gagal: "+e.message,"err"));
+  $("#btnLogout").onclick = ()=> signOut(auth).then(()=> toast("Logout","ok")).catch(e=> toast("Logout gagal: "+e.message,"err"));
+
+  /* === Utils === */
+  const slugify = (s="") =>
+    (s.normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+       .replace(/[^A-Za-z0-9\u0621-\u064A]+/g,"-")
+       .replace(/^-+|-+$/g,"").toLowerCase()) || ("hal-"+Date.now());
+
+  async function updatePageCount(slug){
+    const snap = await getDocs(collection(db,"kitab",slug,"pages"));
+    await setDoc(doc(db,"kitab",slug), { halaman: snap.size }, { merge:true });
+  }
+
+  /* === Metadata === */
+  async function loadMeta(slug){
+    const s = await getDoc(doc(db,"kitab",slug));
+    if(!s.exists()){ toast("Metadata belum ada","err"); return; }
+    const d = s.data();
+    $("#judul").value      = d.judul||"";
+    $("#penulis").value    = d.penulis||"";
+    $("#penerjemah").value = d.penerjemah||"";
+    $("#penerbit").value   = d.penerbit||"";
+    $("#halaman").value    = d.halaman||0;
+  }
+  async function saveMeta(){
+    const slug = ($("#slug").value||"").trim().toLowerCase();
+    if(!slug) return toast("Isi slug dulu","err");
+    showSpin(true);
+    try{
+      await setDoc(doc(db,"kitab",slug), {
+        judul: $("#judul").value.trim(),
+        penulis: $("#penulis").value.trim(),
+        penerjemah: $("#penerjemah").value.trim(),
+        penerbit: $("#penerbit").value.trim(),
+        ...(Number($("#halaman").value)? {halaman:Number($("#halaman").value)} : {})
+      }, { merge:true });
+      toast("Metadata disimpan","ok");
+    }catch(e){ toast("Gagal simpan metadata: "+e.message,"err"); }
+    showSpin(false);
+  }
+
+  /* === Pages render === */
+  function makeLine(arab="", indo=""){
+    const row = document.createElement("div");
+    row.className = "line";
+    row.innerHTML = `
+      <textarea class="rtl" placeholder="Arab…">${arab||""}</textarea>
+      <textarea placeholder="Terjemah…">${indo||""}</textarea>
+      <button class="btn warn" title="Hapus baris">🗑</button>
+    `;
+    row.querySelector("button").onclick = ()=> row.remove();
+    return row;
+  }
+
+  function renderPageCard({docId="", index=1, judul="", id="" , arabic=[], translation=[]}){
+    const wrap = document.createElement("details");
+    wrap.className = "page";
+    wrap.open = false;
+
+    const summary = document.createElement("summary");
+    summary.innerHTML = `
+      <input class="idx" type="number" min="1" value="${index}">
+      <div class="summary-col">
+        <span class="mini">Judul</span>
+        <span class="summary-title">${judul || "(tanpa judul)"}&nbsp;</span>
+      </div>
+      <input class="aid" type="text" value="${id||""}" placeholder="id (anchor)">
+      <div class="summary-actions">
+        <button class="btn" data-act="up"   title="Naik">↑</button>
+        <button class="btn" data-act="down" title="Turun">↓</button>
+        <button class="btn pri" data-act="save" title="Simpan">Simpan</button>
+        <button class="btn warn" data-act="del"  title="Hapus">Hapus</button>
+      </div>
+    `;
+    wrap.appendChild(summary);
+
+    const body = document.createElement("div");
+    body.className = "body";
+    body.innerHTML = `
+      <div class="row">
+        <label>Judul</label>
+        <input class="title" type="text" value="${judul||""}" placeholder="Judul halaman (boleh Arab)">
+      </div>
+      <div class="mini">Tambahkan baris Arab–Terjemah di bawah.</div>
+      <div class="lines"></div>
+      <div class="section-actions">
+        <button class="btn" data-act="addline">+ Baris</button>
+        <button class="btn" data-act="genid">Buat ID dari Judul</button>
+      </div>
+    `;
+    wrap.appendChild(body);
+
+    // isi lines
+    const lines = body.querySelector(".lines");
+    const n = Math.max(arabic.length, translation.length);
+    if(n===0) lines.appendChild(makeLine());
+    else for(let i=0;i<n;i++) lines.appendChild(makeLine(arabic[i]||"", translation[i]||""));
+
+    // dataset
+    wrap.dataset.docId = docId;
+
+    // actions
+    wrap.addEventListener("click", async (e)=>{
+      const act = e.target?.dataset?.act; if(!act) return;
+      if(act==="addline") lines.appendChild(makeLine());
+      if(act==="genid")  wrap.querySelector(".aid").value = slugify(wrap.querySelector(".title").value||"");
+      if(act==="up")     moveCard(wrap,-1);
+      if(act==="down")   moveCard(wrap, 1);
+      if(act==="del")    await deleteCard(wrap);
+      if(act==="save")   await saveCard(wrap);
+    });
+
+    // update title preview live
+    body.querySelector(".title").addEventListener("input", (ev)=>{
+      wrap.querySelector(".summary-title").textContent = ev.target.value || "(tanpa judul)";
+    });
+
+    return wrap;
+  }
+
+  function moveCard(card, dir){
+    const parent = card.parentElement;
+    if(dir<0 && card.previousElementSibling) parent.insertBefore(card, card.previousElementSibling);
+    if(dir>0 && card.nextElementSibling)     parent.insertBefore(card.nextElementSibling, card);
+    // renumber visual indexes
+    [...parent.children].forEach((c,i)=> c.querySelector(".idx").value = i+1);
+  }
+
+  function readCard(card){
+    const index = Number(card.querySelector(".idx").value)||1;
+    const judul = card.querySelector(".title").value.trim();
+    const id    = (card.querySelector(".aid").value.trim() || slugify(judul));
+    const arabic=[], translation=[];
+    card.querySelectorAll(".line").forEach(line=>{
       const a = line.children[0].value.trim();
       const t = line.children[1].value.trim();
-      if(a){ arabic.push(a); translation.push(t || ""); }
+      if(a){ arabic.push(a); translation.push(t||""); }
     });
-    pages.push({ judul:title, id, arabic, translation });
+    return { index, judul, id, arabic, translation, docId: card.dataset.docId||"" };
+  }
+
+  /* === Firestore ops per halaman === */
+  async function saveCard(card){
+    const slug = ($("#slug").value||"").trim().toLowerCase();
+    if(!slug) return toast("Isi slug dulu","err");
+    const data = readCard(card);
+    showSpin(true);
+    try{
+      if(!data.docId){
+        const ref = await addDoc(collection(db,"kitab",slug,"pages"), data);
+        card.dataset.docId = ref.id;
+      }else{
+        await updateDoc(doc(db,"kitab",slug,"pages",data.docId), data);
+      }
+      await updatePageCount(slug);
+      toast("Halaman disimpan","ok");
+    }catch(e){ toast("Gagal simpan: "+e.message,"err"); }
+    showSpin(false);
+  }
+
+  async function deleteCard(card){
+    const slug = ($("#slug").value||"").trim().toLowerCase();
+    if(!slug) return toast("Isi slug dulu","err");
+    if(!confirm("Hapus halaman ini?")) return;
+    showSpin(true);
+    try{
+      const id = card.dataset.docId;
+      if(id) await deleteDoc(doc(db,"kitab",slug,"pages",id));
+      card.remove();
+      await updatePageCount(slug);
+      toast("Halaman dihapus","ok");
+    }catch(e){ toast("Gagal hapus: "+e.message,"err"); }
+    showSpin(false);
+  }
+
+  /* === Batch ops === */
+  async function saveAll(){
+    const slug = ($("#slug").value||"").trim().toLowerCase();
+    if(!slug) return toast("Isi slug dulu","err");
+    const cards = $$("#pages .page");
+    showSpin(true);
+    try{
+      const batch = writeBatch(db);
+      // existing only (punya docId)
+      for(const card of cards){
+        const d = readCard(card);
+        if(d.docId){
+          batch.update(doc(db,"kitab",slug,"pages",d.docId), d);
+        }
+      }
+      await batch.commit();
+      // baru (tanpa docId) commit terpisah
+      for(const card of cards){
+        const d = readCard(card);
+        if(!d.docId){
+          const ref = await addDoc(collection(db,"kitab",slug,"pages"), d);
+          card.dataset.docId = ref.id;
+        }
+      }
+      await updatePageCount(slug);
+      toast("Simpan semua selesai","ok");
+    }catch(e){ toast("Gagal simpan semua: "+e.message,"err"); }
+    showSpin(false);
+  }
+
+  async function reindexAll(){
+    const slug = ($("#slug").value||"").trim().toLowerCase();
+    if(!slug) return toast("Isi slug dulu","err");
+    const cards = $$("#pages .page");
+    showSpin(true);
+    try{
+      cards.forEach((c,i)=> c.querySelector(".idx").value = i+1);
+      const batch = writeBatch(db);
+      for(const card of cards){
+        const id = card.dataset.docId;
+        if(id){
+          const idx = Number(card.querySelector(".idx").value)||1;
+          batch.update(doc(db,"kitab",slug,"pages",id), { index: idx });
+        }
+      }
+      await batch.commit();
+      await updatePageCount(slug);
+      toast("Reindex selesai","ok");
+    }catch(e){ toast("Gagal reindex: "+e.message,"err"); }
+    showSpin(false);
+  }
+
+  /* === Load all === */
+  async function loadAll(){
+    const slug = ($("#slug").value||"").trim().toLowerCase();
+    if(!slug) return toast("Isi slug dulu","err");
+    showSpin(true);
+    try{
+      await loadMeta(slug);
+      pagesEl.innerHTML = "";
+      const snap = await getDocs(query(collection(db,"kitab",slug,"pages"), orderBy("index","asc")));
+      if(snap.empty){ pagesEl.innerHTML = `<div class="muted">Belum ada halaman.</div>`; showSpin(false); return; }
+      snap.forEach(d=>{
+        const x = d.data();
+        const card = renderPageCard({docId:d.id, index:x.index, judul:x.judul, id:x.id, arabic:x.arabic||[], translation:x.translation||[]});
+        pagesEl.appendChild(card);
+      });
+      toast(`Memuat ${snap.size} halaman`,"ok");
+    }catch(e){ toast("Gagal memuat: "+e.message,"err"); }
+    showSpin(false);
+  }
+
+  /* === Search / Filter === */
+  $("#search").addEventListener("input", (e)=>{
+    const q = e.target.value.trim().toLowerCase();
+    $$("#pages .page").forEach(card=>{
+      const title = card.querySelector(".summary-title")?.textContent.toLowerCase() || "";
+      const aid   = card.querySelector(".aid")?.value.toLowerCase() || "";
+      card.style.display = (title.includes(q) || aid.includes(q)) ? "" : "none";
+    });
   });
 
-  const data = {
-    kitab: {
-      judul: judul || "Judul Kitab",
-      penulis: penulis || "-",
-      penerjemah: penerjemah || "-",
-      penerbit: penerbit || "-",
-      halaman: pages.length
-    },
-    pages
-  };
-  outputEl.value = JSON.stringify(data, null, 2);
-};
+  /* === UI events === */
+  $("#btnSaveMeta").onclick    = ()=> saveMeta();
+  $("#btnReloadMeta").onclick  = ()=> { const s=($("#slug").value||"").trim().toLowerCase(); if(!s) return toast("Isi slug dulu","err"); loadMeta(s).catch(e=>toast(e.message,"err")); };
+  $("#btnLoadAll").onclick     = ()=> loadAll();
+  $("#btnReindex").onclick     = ()=> reindexAll();
+  $("#btnSaveAll").onclick     = ()=> saveAll();
 
-$("#btnCopy").onclick = async ()=>{
-  outputEl.select(); document.execCommand("copy");
-  if(navigator.clipboard) { try{ await navigator.clipboard.writeText(outputEl.value);}catch{} }
-  alert("JSON disalin ke clipboard.");
-};
+  function addNewCard(){
+    const maxIdx = $$("#pages .page").length + 1;
+    const c = renderPageCard({index:maxIdx, judul:"", id:"", arabic:[""], translation:[""]});
+    pagesEl.appendChild(c);
+    c.open = true;
+    c.scrollIntoView({behavior:"smooth", block:"start"});
+  }
+  $("#btnAddPage").onclick = addNewCard;
+  $("#fabAdd").onclick     = addNewCard;
 
-$("#btnDownload").onclick = ()=>{
-  const name = ( $("#judul").value.trim() || "kitab" )
-    .toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9\-]/g,"");
-  const blob = new Blob([outputEl.value||"{}"], {type: "application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = Object.assign(document.createElement("a"), {href:url, download: `${name||"kitab"}.json`});
-  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
-};
-
-$("#btnPretty").onclick = ()=>{
-  try{ outputEl.value = JSON.stringify(JSON.parse(outputEl.value), null, 2); }catch{}
-};
-$("#btnMinify").onclick = ()=>{
-  try{ outputEl.value = JSON.stringify(JSON.parse(outputEl.value)); }catch{}
-};
-
-/* ---- Local storage ---- */
-const LS_KEY = "santrilogy-kitab-editor";
-$("#btnSaveLocal").onclick = ()=>{ $("#btnGenerate").click(); localStorage.setItem(LS_KEY, outputEl.value); alert("Tersimpan di browser."); };
-$("#btnLoadLocal").onclick = ()=>{
-  const raw = localStorage.getItem(LS_KEY);
-  if(!raw){ alert("Belum ada data tersimpan."); return; }
-  loadFromJSON(JSON.parse(raw));
-};
-$("#btnClearLocal").onclick = ()=>{ localStorage.removeItem(LS_KEY); alert("Data lokal dihapus."); };
-
-/* ---- Import JSON file ---- */
-$("#btnImport").onclick = ()=>{
-  const f = $("#file").files[0];
-  if(!f) return alert("Pilih berkas JSON terlebih dahulu.");
-  const reader = new FileReader();
-  reader.onload = () => { try{ loadFromJSON(JSON.parse(reader.result)); }catch(e){ alert("Format JSON tidak valid."); } };
-  reader.readAsText(f);
-};
-
-/* ---- Sample data ---- */
-$("#btnSample").onclick = ()=>{
-  const sample = {
-    kitab:{judul:"Terjemah Al-Ajrumiyyah",penulis:"Ibn Ajurrum",penerjemah:"Ahmad Khoirul Fatihin",penerbit:"Santrilogy Press",halaman:2},
-    pages:[
-      {judul:"المدخل",id:"al-madkhal",arabic:["بسم الله الرحمن الرحيم","الكلامُ: هو اللَّفْظُ المُرَكَّبُ المُفِيدُ بالوَضْعِ."],
-       translation:["Dengan nama Allah Yang Maha Pengasih lagi Maha Penyayang.","Kalam adalah lafaz tersusun yang memberikan faidah secara kebahasaan."]},
-      {judul:"باب الإعراب",id:"bab-al-irab",arabic:["الإعراب هو تغيير أواخر الكَلِم، لاختلاف العوامل الداخلة عليها.","وأقسامُه أربعة: رَفع، ونَصب، وخَفْض، وجَزْم."],
-       translation:["I’rab adalah perubahan akhir kata karena perbedaan unsur yang masuk ke dalamnya.","Pembagian i’rab ada empat: rafa’, nashab, khafadh, dan jazm."]}
-    ]
-  };
-  loadFromJSON(sample);
-};
-
-/* ---- Loader helper ---- */
-function loadFromJSON(data){
-  // isi meta
-  $("#judul").value = data.kitab?.judul || "";
-  $("#penulis").value = data.kitab?.penulis || "";
-  $("#penerjemah").value = data.kitab?.penerjemah || "";
-  $("#penerbit").value = data.kitab?.penerbit || "";
-
-  // halaman
-  pagesEl.innerHTML = "";
-  (data.pages||[]).forEach(p=>{
-    const page = createPage(p.judul, p.id);
-    const lines = page.querySelector(".lines");
-    lines.innerHTML = ""; // clear default
-    (p.arabic||[]).forEach((a,i)=>{
-      lines.appendChild(createLine(a, (p.translation||[])[i]||""));
-    });
-    pagesEl.appendChild(page);
-  });
-
-  $("#btnGenerate").click(); // render output
-}
-
-/* ---- Autoload local if exists ---- */
-(function autoLoad(){
-  const raw = localStorage.getItem(LS_KEY);
-  if(raw){ try{ loadFromJSON(JSON.parse(raw)); }catch{} }
-})();
+  $("#btnExpand").onclick  = ()=> $$("#pages .page").forEach(c=> c.open = true);
+  $("#btnCollapse").onclick= ()=> $$("#pages .page").forEach(c=> c.open = false);
 </script>
 </body>
 </html>
