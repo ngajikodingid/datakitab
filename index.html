@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin Terjemah Kitab — Firestore (UX+Responsive)</title>
+<title>Admin Terjemah Kitab — Firestore (Final, Auto Update)</title>
 <link href="https://fonts.googleapis.com/css2?family=Amiri&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -33,15 +33,8 @@
   .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
   .btn.warn{border-color:color-mix(in srgb,var(--err) 50%, var(--line) 50%);color:var(--err)}
   .btn.ghost{background:transparent}
-
-  .grid{
-    display:grid;gap:16px;
-    grid-template-columns:1fr;
-  }
-  @media(min-width:980px){
-    .grid{grid-template-columns:320px 1fr}
-  }
-
+  .grid{display:grid;gap:16px;grid-template-columns:1fr}
+  @media(min-width:980px){.grid{grid-template-columns:320px 1fr}}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
   .card h2{margin:0;padding:12px 14px;border-bottom:1px solid var(--line);font-size:15px}
   .card .body{padding:14px}
@@ -53,10 +46,9 @@
   }
   textarea{min-height:84px;resize:vertical}
   .muted{color:var(--muted);font-size:12px}
+  #search{max-width:360px}
 
   /* pages */
-  #tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:8px}
-  #search{max-width:360px}
   .pages{display:grid;gap:12px}
   details.page{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:color-mix(in srgb,var(--card) 92%, #000 8%)}
   details.page summary{
@@ -70,30 +62,15 @@
   .summary-title{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
   .summary-actions{display:flex;gap:6px}
   .page .body{padding:12px;border-top:1px solid var(--line)}
-  .lines{display:grid;gap:8px}
-  .line{display:grid;gap:8px;grid-template-columns:1fr 1fr auto}
-  .line textarea{min-height:62px}
-  .rtl{direction:rtl;text-align:right;font-family:"Amiri",serif}
   .mini{font-size:12px;color:var(--muted)}
-  .section-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:10px}
+  .rtl{direction:rtl;text-align:right;font-family:"Amiri",serif}
 
-  /* toast */
-  .toast{
-    position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:60
-  }
-  .toast .item{
-    background:var(--card);border:1px solid var(--line);padding:10px 12px;border-radius:10px;min-width:240px
-  }
+  /* toast & loader */
+  .toast{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:60}
+  .toast .item{background:var(--card);border:1px solid var(--line);padding:10px 12px;border-radius:10px;min-width:240px}
   .item.ok{border-color:color-mix(in srgb,var(--ok) 40%, var(--line) 60%)}
   .item.err{border-color:color-mix(in srgb,var(--err) 40%, var(--line) 60%)}
-  /* fab */
-  .fab{
-    position:fixed;right:16px;bottom:84px;z-index:55
-  }
-
-  /* loader */
-  .spinner{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);z-index:70;
-           align-items:center;justify-content:center}
+  .spinner{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);z-index:70;align-items:center;justify-content:center}
   .spinner .dot{width:12px;height:12px;border-radius:999px;background:#fff;opacity:.9;margin:6px;animation:bl 1s infinite alternate}
   .spinner .dot:nth-child(2){animation-delay:.2s}.spinner .dot:nth-child(3){animation-delay:.4s}
   @keyframes bl{from{transform:scale(.8);opacity:.5}to{transform:scale(1.3);opacity:1}}
@@ -103,7 +80,7 @@
 <header class="topbar">
   <div>
     <div class="brand">Admin Terjemah Kitab</div>
-    <div class="sub">Firestore editor • UX+Responsive</div>
+    <div class="sub">Firestore editor • Auto Update</div>
   </div>
   <div class="bar">
     <div id="userBox" class="chip">Belum login</div>
@@ -128,7 +105,7 @@
         </div>
         <p class="muted">Path: <code>kitab/&lt;slug&gt;</code> + subkoleksi <code>pages</code>.</p>
         <hr style="border:none;border-top:1px solid var(--line);margin:12px 0">
-        <div class="row"><label>Cari Halaman</label><input id="search" type="text" placeholder="Ketik judul / id…"></div>
+        <div class="row"><label>Cari</label><input id="search" type="text" placeholder="Ketik judul / id…"></div>
         <div class="bar">
           <button id="btnExpand" class="btn">Expand All</button>
           <button id="btnCollapse" class="btn">Collapse All</button>
@@ -157,17 +134,10 @@
   <section class="card" style="margin-top:16px">
     <h2>Halaman (Pages)</h2>
     <div class="body">
-      <div id="tools">
-        <span class="muted">Klik ringkasan untuk membuka/menutup isi halaman. Simpan per halaman atau Simpan Semua.</span>
-      </div>
+      <div class="muted" style="margin-bottom:8px">Ketik pada judul/teks untuk autosave (±0.8s). Atau pakai tombol **Simpan**.</div>
       <div id="pages" class="pages"></div>
     </div>
   </section>
-</div>
-
-<!-- Floating Add (mobile) -->
-<div class="fab">
-  <button id="fabAdd" class="btn pri">+ Halaman</button>
 </div>
 
 <!-- Toasts & Loader -->
@@ -179,11 +149,12 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
   import {
-    getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc,
+    initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+    doc, getDoc, setDoc, updateDoc, deleteDoc,
     collection, getDocs, addDoc, writeBatch, query, orderBy
   } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-  /* === CONFIG MAS === */
+  /* === CONFIG (ganti bila perlu) === */
   const firebaseConfig = {
     apiKey: "AIzaSyCco9E-DrkMGaoCXnZsP6a7IA1GwSgvU8k",
     authDomain: "terjemah-kitab-84103.firebaseapp.com",
@@ -194,10 +165,14 @@
     measurementId: "G-FRWV8S6X8N"
   };
 
-  /* === INIT === */
+  /* === INIT (stabil untuk Blogger/ISP): long-poll + no fetch streams) === */
   const app = initializeApp(firebaseConfig);
+  const db  = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+    useFetchStreams: false,
+    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  });
   const auth = getAuth(app);
-  const db   = getFirestore(app);
   const provider = new GoogleAuthProvider();
 
   /* === DOM helpers === */
@@ -208,18 +183,12 @@
   const pagesEl = $("#pages");
 
   const showSpin = (v=true)=> spinEl.style.display = v ? "flex" : "none";
-  function toast(msg, type=""){
-    const d = document.createElement("div");
-    d.className = `item ${type}`;
-    d.textContent = msg;
-    toastEl.appendChild(d);
-    setTimeout(()=> d.remove(), 3000);
-  }
+  function toast(msg, type=""){ const d=document.createElement("div"); d.className=`item ${type}`; d.textContent=msg; toastEl.appendChild(d); setTimeout(()=>d.remove(), 2400); }
 
-  /* === AUTH === */
+  /* === Auth === */
   onAuthStateChanged(auth, (user)=>{
     if(user){ $("#userBox").textContent = user.email; $("#userBox").classList.add("chip"); toast("Login: "+user.email,"ok"); }
-    else { $("#userBox").textContent = "Belum login"; toast("Belum login"); }
+    else { $("#userBox").textContent = "Belum login"; }
   });
   $("#btnLogin").onclick  = ()=> signInWithPopup(auth, provider).catch(e=> toast("Login gagal: "+e.message,"err"));
   $("#btnLogout").onclick = ()=> signOut(auth).then(()=> toast("Logout","ok")).catch(e=> toast("Logout gagal: "+e.message,"err"));
@@ -263,20 +232,16 @@
     showSpin(false);
   }
 
-  /* === Pages render === */
-  function makeLine(arab="", indo=""){
-    const row = document.createElement("div");
-    row.className = "line";
-    row.innerHTML = `
-      <textarea class="rtl" placeholder="Arab…">${arab||""}</textarea>
-      <textarea placeholder="Terjemah…">${indo||""}</textarea>
-      <button class="btn warn" title="Hapus baris">🗑</button>
-    `;
-    row.querySelector("button").onclick = ()=> row.remove();
-    return row;
+  /* === Debounce helper (autosave) === */
+  const timers = new Map();
+  function debounce(key, fn, wait=800){
+    clearTimeout(timers.get(key));
+    const t = setTimeout(fn, wait);
+    timers.set(key, t);
   }
 
-  function renderPageCard({docId="", index=1, judul="", id="" , arabic=[], translation=[]}){
+  /* === Page Card (string-based) === */
+  function renderPageCard({docId="", index=1, judul="", id="", arabicText="", translationText=""}){
     const wrap = document.createElement("details");
     wrap.className = "page";
     wrap.open = false;
@@ -285,7 +250,7 @@
     summary.innerHTML = `
       <input class="idx" type="number" min="1" value="${index}">
       <div class="summary-col">
-        <span class="mini">Judul</span>
+        <span class="muted">Judul</span>
         <span class="summary-title">${judul || "(tanpa judul)"}&nbsp;</span>
       </div>
       <input class="aid" type="text" value="${id||""}" placeholder="id (anchor)">
@@ -305,20 +270,19 @@
         <label>Judul</label>
         <input class="title" type="text" value="${judul||""}" placeholder="Judul halaman (boleh Arab)">
       </div>
-      <div class="mini">Tambahkan baris Arab–Terjemah di bawah.</div>
-      <div class="lines"></div>
-      <div class="section-actions">
-        <button class="btn" data-act="addline">+ Baris</button>
+      <div class="row">
+        <label>Arab</label>
+        <textarea class="arabText rtl" placeholder="Baris dipisah Enter…">${arabicText||""}</textarea>
+      </div>
+      <div class="row">
+        <label>Terjemah</label>
+        <textarea class="indoText" placeholder="Baris dipisah Enter…">${translationText||""}</textarea>
+      </div>
+      <div class="bar" style="justify-content:flex-end">
         <button class="btn" data-act="genid">Buat ID dari Judul</button>
       </div>
     `;
     wrap.appendChild(body);
-
-    // isi lines
-    const lines = body.querySelector(".lines");
-    const n = Math.max(arabic.length, translation.length);
-    if(n===0) lines.appendChild(makeLine());
-    else for(let i=0;i<n;i++) lines.appendChild(makeLine(arabic[i]||"", translation[i]||""));
 
     // dataset
     wrap.dataset.docId = docId;
@@ -326,18 +290,23 @@
     // actions
     wrap.addEventListener("click", async (e)=>{
       const act = e.target?.dataset?.act; if(!act) return;
-      if(act==="addline") lines.appendChild(makeLine());
       if(act==="genid")  wrap.querySelector(".aid").value = slugify(wrap.querySelector(".title").value||"");
       if(act==="up")     moveCard(wrap,-1);
-      if(act==="down")   moveCard(wrap, 1);
+      if(act==="down")   moveCard(wrap,  1);
       if(act==="del")    await deleteCard(wrap);
       if(act==="save")   await saveCard(wrap);
     });
 
-    // update title preview live
+    // live preview title
     body.querySelector(".title").addEventListener("input", (ev)=>{
       wrap.querySelector(".summary-title").textContent = ev.target.value || "(tanpa judul)";
+      autoSaveCard(wrap);
     });
+    // autosave index/id/teks
+    summary.querySelector(".idx").addEventListener("input", ()=> autoSaveCard(wrap));
+    summary.querySelector(".aid").addEventListener("input", ()=> autoSaveCard(wrap));
+    body.querySelector(".arabText").addEventListener("input", ()=> autoSaveCard(wrap));
+    body.querySelector(".indoText").addEventListener("input", ()=> autoSaveCard(wrap));
 
     return wrap;
   }
@@ -346,29 +315,23 @@
     const parent = card.parentElement;
     if(dir<0 && card.previousElementSibling) parent.insertBefore(card, card.previousElementSibling);
     if(dir>0 && card.nextElementSibling)     parent.insertBefore(card.nextElementSibling, card);
-    // renumber visual indexes
     [...parent.children].forEach((c,i)=> c.querySelector(".idx").value = i+1);
+    autoSaveCard(card); // simpan index baru
   }
 
   function readCard(card){
     const index = Number(card.querySelector(".idx").value)||1;
     const judul = card.querySelector(".title").value.trim();
     const id    = (card.querySelector(".aid").value.trim() || slugify(judul));
-    const arabic=[], translation=[];
-    card.querySelectorAll(".line").forEach(line=>{
-      const a = line.children[0].value.trim();
-      const t = line.children[1].value.trim();
-      if(a){ arabic.push(a); translation.push(t||""); }
-    });
-    return { index, judul, id, arabic, translation, docId: card.dataset.docId||"" };
+    const arabicText      = (card.querySelector(".arabText").value || "").trim();
+    const translationText = (card.querySelector(".indoText").value || "").trim();
+    return { index, judul, id, arabicText, translationText, docId: card.dataset.docId||"" };
   }
 
-  /* === Firestore ops per halaman === */
   async function saveCard(card){
     const slug = ($("#slug").value||"").trim().toLowerCase();
     if(!slug) return toast("Isi slug dulu","err");
     const data = readCard(card);
-    showSpin(true);
     try{
       if(!data.docId){
         const ref = await addDoc(collection(db,"kitab",slug,"pages"), data);
@@ -377,16 +340,20 @@
         await updateDoc(doc(db,"kitab",slug,"pages",data.docId), data);
       }
       await updatePageCount(slug);
-      toast("Halaman disimpan","ok");
+      toast("Tersimpan","ok");
     }catch(e){ toast("Gagal simpan: "+e.message,"err"); }
-    showSpin(false);
+  }
+
+  function autoSaveCard(card){
+    const slug = ($("#slug").value||"").trim().toLowerCase();
+    if(!slug) return;
+    debounce(`page-${card.dataset.docId || Math.random()}`, ()=> saveCard(card), 800);
   }
 
   async function deleteCard(card){
     const slug = ($("#slug").value||"").trim().toLowerCase();
     if(!slug) return toast("Isi slug dulu","err");
     if(!confirm("Hapus halaman ini?")) return;
-    showSpin(true);
     try{
       const id = card.dataset.docId;
       if(id) await deleteDoc(doc(db,"kitab",slug,"pages",id));
@@ -394,7 +361,6 @@
       await updatePageCount(slug);
       toast("Halaman dihapus","ok");
     }catch(e){ toast("Gagal hapus: "+e.message,"err"); }
-    showSpin(false);
   }
 
   /* === Batch ops === */
@@ -405,7 +371,7 @@
     showSpin(true);
     try{
       const batch = writeBatch(db);
-      // existing only (punya docId)
+      // update yang sudah punya docId
       for(const card of cards){
         const d = readCard(card);
         if(d.docId){
@@ -413,7 +379,7 @@
         }
       }
       await batch.commit();
-      // baru (tanpa docId) commit terpisah
+      // tambah yang belum punya docId
       for(const card of cards){
         const d = readCard(card);
         if(!d.docId){
@@ -461,7 +427,17 @@
       if(snap.empty){ pagesEl.innerHTML = `<div class="muted">Belum ada halaman.</div>`; showSpin(false); return; }
       snap.forEach(d=>{
         const x = d.data();
-        const card = renderPageCard({docId:d.id, index:x.index, judul:x.judul, id:x.id, arabic:x.arabic||[], translation:x.translation||[]});
+        // kompatibel data lama (array) → join
+        const aText = typeof x.arabicText === "string"
+          ? x.arabicText
+          : Array.isArray(x.arabic) ? x.arabic.join("\n") : (x.arabic||"");
+        const tText = typeof x.translationText === "string"
+          ? x.translationText
+          : Array.isArray(x.translation) ? x.translation.join("\n") : (x.translation||"");
+        const card = renderPageCard({
+          docId:d.id, index:x.index, judul:x.judul, id:x.id,
+          arabicText:aText, translationText:tText
+        });
         pagesEl.appendChild(card);
       });
       toast(`Memuat ${snap.size} halaman`,"ok");
@@ -488,13 +464,12 @@
 
   function addNewCard(){
     const maxIdx = $$("#pages .page").length + 1;
-    const c = renderPageCard({index:maxIdx, judul:"", id:"", arabic:[""], translation:[""]});
+    const c = renderPageCard({index:maxIdx, judul:"", id:"", arabicText:"", translationText:""});
     pagesEl.appendChild(c);
     c.open = true;
     c.scrollIntoView({behavior:"smooth", block:"start"});
   }
   $("#btnAddPage").onclick = addNewCard;
-  $("#fabAdd").onclick     = addNewCard;
 
   $("#btnExpand").onclick  = ()=> $$("#pages .page").forEach(c=> c.open = true);
   $("#btnCollapse").onclick= ()=> $$("#pages .page").forEach(c=> c.open = false);
