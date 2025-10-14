@@ -121,6 +121,11 @@
         <div class="row"><label>Penulis</label><input id="penulis" type="text"></div>
         <div class="row"><label>Penerjemah</label><input id="penerjemah" type="text"></div>
         <div class="row"><label>Penerbit</label><input id="penerbit" type="text"></div>
+        <!-- STATUS (input text) -->
+        <div class="row">
+          <label>Status</label>
+          <input id="status" type="text" placeholder="mis. updated / new / draft / revised / soon">
+        </div>
         <div class="row"><label>Halaman</label><input id="halaman" type="number" min="0" placeholder="auto dari pages"></div>
         <div class="bar" style="justify-content:flex-end">
           <button id="btnSaveMeta" class="btn pri">Simpan Metadata</button>
@@ -222,7 +227,7 @@
     $("#penulis").value    = d.penulis||"";
     $("#penerjemah").value = d.penerjemah||"";
     $("#penerbit").value   = d.penerbit||"";
-    $("#status").value     = d.status || ""; 
+    $("#status").value     = d.status || "";   // ← status input
     $("#halaman").value    = d.halaman||0;
   }
   async function saveMeta(){
@@ -230,12 +235,13 @@
     if(!slug) return toast("Isi slug dulu","err");
     showSpin(true);
     try{
+      const rawStatus = ($("#status").value || "").trim(); // ← ambil dari input
       await setDoc(doc(db,"kitab",slug), {
         judul: $("#judul").value.trim(),
         penulis: $("#penulis").value.trim(),
         penerjemah: $("#penerjemah").value.trim(),
         penerbit: $("#penerbit").value.trim(),
-        status: $("#status").value.trim(),
+        status: rawStatus,                                // ← simpan status
         ...(Number($("#halaman").value)? {halaman:Number($("#halaman").value)} : {})
       }, { merge:true });
       toast("Metadata disimpan","ok");
