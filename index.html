@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Generator JSON Kitab | Santrilogy</title>
+<style>
+  :root{
+    --bg:#f8fafc; --fg:#111827; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb;
+  }
+  html,body{background:var(--bg);color:var(--fg);font:14px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Inter,sans-serif;margin:0}
+  header{max-width:1100px;margin:18px auto 8px;padding:0 16px}
+  header h1{font-size:20px;margin:0 0 4px;font-weight:800}
+  header p{margin:0;color:var(--muted)}
+  .wrap{max-width:1100px;margin:8px auto 32px;padding:0 16px;display:grid;grid-template-columns:1.2fr .8fr;gap:16px}
+  @media (max-width:980px){.wrap{grid-template-columns:1fr}}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px}
+  .card h2{font-size:16px;padding:12px 14px;margin:0;border-bottom:1px solid var(--line)}
+  .card .body{padding:14px}
+  .row{display:grid;grid-template-columns:140px 1fr;gap:10px;align-items:center;margin-bottom:10px}
+  .row label{color:var(--muted)}
+  input[type="text"],input[type="number"],textarea,select{
+    width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;color:var(--fg)
+  }
+  textarea{min-height:96px;resize:vertical}
+  .help{color:var(--muted);font-size:12px;margin-top:4px}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;cursor:pointer}
+  .btn:hover{background:#f3f4f6}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.ghost{background:transparent}
+  .stack{display:flex;gap:8px;flex-wrap:wrap}
+  .page{border:1px dashed var(--line);border-radius:12px;padding:12px;margin-bottom:12px;background:#fbfdff}
+  .page-head{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .rtl{direction:rtl;text-align:right;font-family:"Amiri",serif}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:12px}
+  .lines .line{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin:8px 0}
+  .lines .line button{height:38px}
+  .out{width:100%;min-height:320px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+  .footer{color:var(--muted);font-size:12px;text-align:center;margin-top:8px}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Amiri&display=swap" rel="stylesheet">
+</head>
+<body>
+<header>
+  <h1>Generator JSON Kitab</h1>
+  <p>Buat, edit, dan unduh file JSON untuk halaman terjemah kitab Santrilogy.</p>
+</header>
+
+<div class="wrap">
+  <!-- LEFT: FORM -->
+  <section class="card">
+    <h2>Metadata Kitab</h2>
+    <div class="body">
+      <div class="row"><label>Judul</label><input id="judul" type="text" placeholder="Terjemah Kitab Al-Ajrumiyyah"></div>
+      <div class="row"><label>Penulis</label><input id="penulis" type="text" placeholder="Ibn Ajurrum"></div>
+      <div class="row"><label>Penerjemah</label><input id="penerjemah" type="text" placeholder="Nama Penerjemah"></div>
+      <div class="row"><label>Penerbit</label><input id="penerbit" type="text" placeholder="Santrilogy Press"></div>
+      <div class="help">Jumlah halaman akan terisi otomatis dari banyaknya halaman di bawah.</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Impor / Ekspor</h2>
+    <div class="body">
+      <div class="stack">
+        <input id="file" type="file" accept="application/json" class="btn" />
+        <button class="btn" id="btnImport">Impor JSON</button>
+        <button class="btn" id="btnSample">Contoh Data</button>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="btnCopy">Salin JSON</button>
+        <button class="btn" id="btnDownload">Unduh .json</button>
+        <button class="btn" id="btnPretty">Pretty</button>
+        <button class="btn" id="btnMinify">Minify</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" style="grid-column:1/-1">
+    <h2>Halaman & Isi</h2>
+    <div class="body">
+      <div class="stack" style="justify-content:space-between">
+        <div class="help">Tambahkan halaman. Tiap baris terdiri dari sepasang Arab & Terjemah.</div>
+        <div class="stack">
+          <button class="btn" id="btnAddPage">+ Tambah Halaman</button>
+          <button class="btn" id="btnClearPages">Hapus Semua Halaman</button>
+        </div>
+      </div>
+      <div id="pages"></div>
+      <div class="toolbar">
+        <button class="btn primary" id="btnGenerate">Hasilkan JSON</button>
+        <button class="btn" id="btnSaveLocal">Simpan Lokal</button>
+        <button class="btn" id="btnLoadLocal">Muat Lokal</button>
+        <button class="btn" id="btnClearLocal">Hapus Lokal</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RIGHT: OUTPUT -->
+  <section class="card">
+    <h2>Output JSON</h2>
+    <div class="body">
+      <textarea id="output" class="out" spellcheck="false" placeholder='Klik "Hasilkan JSON"…'></textarea>
+      <div class="footer">Format mengikuti skema: {"kitab":{...},"pages":[{judul,id,arabic[],translation[]}...]}</div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ----------------- Utilities ----------------- */
+const $ = s => document.querySelector(s);
+const pagesEl = $("#pages");
+const outputEl = $("#output");
+
+function slugify(str){
+  return (str||"")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[^A-Za-z0-9\u0621-\u064A]+/g,"-") // keep arabic letters too
+    .replace(/^-+|-+$/g,"").toLowerCase() || "hal-"+Date.now();
+}
+
+function createLine(arab="", indo=""){
+  const wrap = document.createElement("div");
+  wrap.className = "line";
+  wrap.innerHTML = `
+    <textarea class="rtl" placeholder="Teks Arab…">${arab}</textarea>
+    <textarea placeholder="Terjemah Indonesia…">${indo}</textarea>
+    <button type="button" class="btn">🗑</button>
+  `;
+  wrap.querySelector("button").onclick = ()=> wrap.remove();
+  return wrap;
+}
+
+function createPage(title="", id=""){
+  const page = document.createElement("div");
+  page.className = "page";
+  const newId = id || slugify(title || "halaman");
+  page.innerHTML = `
+    <div class="page-head">
+      <input type="text" class="p-title" placeholder="Judul halaman (boleh Arab)" value="${title}">
+      <input type="text" class="p-id" placeholder="id (anchor/slug)" value="${newId}">
+      <div class="stack">
+        <button type="button" class="btn add-line">+ Tambah Baris</button>
+        <button type="button" class="btn dup-page">Duplikat</button>
+        <button type="button" class="btn" style="color:#b91c1c;border-color:#fca5a5" title="Hapus halaman">Hapus</button>
+      </div>
+    </div>
+    <div class="lines"></div>
+  `;
+  const lines = page.querySelector(".lines");
+  page.querySelector(".add-line").onclick = ()=> lines.appendChild(createLine());
+  page.querySelector(".dup-page").onclick = ()=>{
+    const copy = createPage(
+      page.querySelector(".p-title").value,
+      page.querySelector(".p-id").value+"-copy"
+    );
+    // copy existing lines
+    lines.querySelectorAll(".line").forEach(l=>{
+      const a = l.children[0].value, t = l.children[1].value;
+      copy.querySelector(".lines").appendChild(createLine(a,t));
+    });
+    pagesEl.insertBefore(copy, page.nextSibling);
+  };
+  page.querySelector("[title='Hapus halaman']").onclick = ()=> page.remove();
+  // default 1 baris
+  lines.appendChild(createLine());
+  return page;
+}
+
+/* ----------------- Actions ----------------- */
+$("#btnAddPage").onclick = ()=> pagesEl.appendChild(createPage());
+$("#btnClearPages").onclick = ()=> pagesEl.innerHTML = "";
+
+$("#btnGenerate").onclick = ()=>{
+  const judul = $("#judul").value.trim();
+  const penulis = $("#penulis").value.trim();
+  const penerjemah = $("#penerjemah").value.trim();
+  const penerbit = $("#penerbit").value.trim();
+
+  const pages = [];
+  pagesEl.querySelectorAll(".page").forEach((p,idx)=>{
+    const title = p.querySelector(".p-title").value.trim() || `Halaman ${idx+1}`;
+    const id = (p.querySelector(".p-id").value.trim() || slugify(title));
+    const arabic = [], translation = [];
+    p.querySelectorAll(".line").forEach(line=>{
+      const a = line.children[0].value.trim();
+      const t = line.children[1].value.trim();
+      if(a){ arabic.push(a); translation.push(t || ""); }
+    });
+    pages.push({ judul:title, id, arabic, translation });
+  });
+
+  const data = {
+    kitab: {
+      judul: judul || "Judul Kitab",
+      penulis: penulis || "-",
+      penerjemah: penerjemah || "-",
+      penerbit: penerbit || "-",
+      halaman: pages.length
+    },
+    pages
+  };
+  outputEl.value = JSON.stringify(data, null, 2);
+};
+
+$("#btnCopy").onclick = async ()=>{
+  outputEl.select(); document.execCommand("copy");
+  if(navigator.clipboard) { try{ await navigator.clipboard.writeText(outputEl.value);}catch{} }
+  alert("JSON disalin ke clipboard.");
+};
+
+$("#btnDownload").onclick = ()=>{
+  const name = ( $("#judul").value.trim() || "kitab" )
+    .toLowerCase().replace(/\s+/g,"-").replace(/[^a-z0-9\-]/g,"");
+  const blob = new Blob([outputEl.value||"{}"], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement("a"), {href:url, download: `${name||"kitab"}.json`});
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+};
+
+$("#btnPretty").onclick = ()=>{
+  try{ outputEl.value = JSON.stringify(JSON.parse(outputEl.value), null, 2); }catch{}
+};
+$("#btnMinify").onclick = ()=>{
+  try{ outputEl.value = JSON.stringify(JSON.parse(outputEl.value)); }catch{}
+};
+
+/* ---- Local storage ---- */
+const LS_KEY = "santrilogy-kitab-editor";
+$("#btnSaveLocal").onclick = ()=>{ $("#btnGenerate").click(); localStorage.setItem(LS_KEY, outputEl.value); alert("Tersimpan di browser."); };
+$("#btnLoadLocal").onclick = ()=>{
+  const raw = localStorage.getItem(LS_KEY);
+  if(!raw){ alert("Belum ada data tersimpan."); return; }
+  loadFromJSON(JSON.parse(raw));
+};
+$("#btnClearLocal").onclick = ()=>{ localStorage.removeItem(LS_KEY); alert("Data lokal dihapus."); };
+
+/* ---- Import JSON file ---- */
+$("#btnImport").onclick = ()=>{
+  const f = $("#file").files[0];
+  if(!f) return alert("Pilih berkas JSON terlebih dahulu.");
+  const reader = new FileReader();
+  reader.onload = () => { try{ loadFromJSON(JSON.parse(reader.result)); }catch(e){ alert("Format JSON tidak valid."); } };
+  reader.readAsText(f);
+};
+
+/* ---- Sample data ---- */
+$("#btnSample").onclick = ()=>{
+  const sample = {
+    kitab:{judul:"Terjemah Al-Ajrumiyyah",penulis:"Ibn Ajurrum",penerjemah:"Ahmad Khoirul Fatihin",penerbit:"Santrilogy Press",halaman:2},
+    pages:[
+      {judul:"المدخل",id:"al-madkhal",arabic:["بسم الله الرحمن الرحيم","الكلامُ: هو اللَّفْظُ المُرَكَّبُ المُفِيدُ بالوَضْعِ."],
+       translation:["Dengan nama Allah Yang Maha Pengasih lagi Maha Penyayang.","Kalam adalah lafaz tersusun yang memberikan faidah secara kebahasaan."]},
+      {judul:"باب الإعراب",id:"bab-al-irab",arabic:["الإعراب هو تغيير أواخر الكَلِم، لاختلاف العوامل الداخلة عليها.","وأقسامُه أربعة: رَفع، ونَصب، وخَفْض، وجَزْم."],
+       translation:["I’rab adalah perubahan akhir kata karena perbedaan unsur yang masuk ke dalamnya.","Pembagian i’rab ada empat: rafa’, nashab, khafadh, dan jazm."]}
+    ]
+  };
+  loadFromJSON(sample);
+};
+
+/* ---- Loader helper ---- */
+function loadFromJSON(data){
+  // isi meta
+  $("#judul").value = data.kitab?.judul || "";
+  $("#penulis").value = data.kitab?.penulis || "";
+  $("#penerjemah").value = data.kitab?.penerjemah || "";
+  $("#penerbit").value = data.kitab?.penerbit || "";
+
+  // halaman
+  pagesEl.innerHTML = "";
+  (data.pages||[]).forEach(p=>{
+    const page = createPage(p.judul, p.id);
+    const lines = page.querySelector(".lines");
+    lines.innerHTML = ""; // clear default
+    (p.arabic||[]).forEach((a,i)=>{
+      lines.appendChild(createLine(a, (p.translation||[])[i]||""));
+    });
+    pagesEl.appendChild(page);
+  });
+
+  $("#btnGenerate").click(); // render output
+}
+
+/* ---- Autoload local if exists ---- */
+(function autoLoad(){
+  const raw = localStorage.getItem(LS_KEY);
+  if(raw){ try{ loadFromJSON(JSON.parse(raw)); }catch{} }
+})();
+</script>
+</body>
+</html>
