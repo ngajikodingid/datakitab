@@ -1,0 +1,47 @@
+{
+  "kitab": {
+    "judul": "Terjemah Kitab Al-Ajrumiyyah",
+    "penulis": "Ibn Ajurrum",
+    "penerjemah": "Ahmad Khoirul Fatihin",
+    "penerbit": "Santrilogy Press",
+    "halaman": 3
+  },
+  "pages": [
+    {
+      "judul": "المدخل",
+      "id": "al-madkhal",
+      "arabic": [
+        "بسم الله الرحمن الرحيم",
+        "الكلامُ: هو اللَّفْظُ المُرَكَّبُ المُفِيدُ بالوَضْعِ."
+      ],
+      "translation": [
+        "Dengan nama Allah Yang Maha Pengasih lagi Maha Penyayang.",
+        "Kalam adalah lafaz tersusun yang memberikan faidah secara kebahasaan."
+      ]
+    },
+    {
+      "judul": "باب الإعراب",
+      "id": "bab-al-irab",
+      "arabic": [
+        "الإعراب هو تغيير أواخرِ الكَلِم، لاختلافِ العوامل الداخلة عليها لفظا أو تقديرا.",
+        "وأقسامُه أربعة: رَفع، ونَصب، وخَفْض، وجَزْم."
+      ],
+      "translation": [
+        "I’rab adalah perubahan akhir kata karena perbedaan unsur yang masuk ke dalamnya.",
+        "Pembagian i’rab ada empat: rafa’, nashab, khafadh, dan jazm."
+      ]
+    },
+    {
+      "judul": "باب علامات الإعراب",
+      "id": "alamat-al-irab",
+      "arabic": [
+        "للرفع أربعُ علامات: الضمة، والواو، والألف، والنون.",
+        "وللنصب خمس علامات: الفتحة، والألف، والكسرة، والياء، وحذف النون."
+      ],
+      "translation": [
+        "Rafa’ memiliki empat tanda: ḍammah, wāw, alif, dan nūn.",
+        "Nashab memiliki lima tanda: fatḥah, alif, kasrah, yā’, dan membuang nūn."
+      ]
+    }
+  ]
+}
