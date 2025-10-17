@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin Terjemah Kitab — Firestore (Array Auto-Convert)</title>
+<title>Admin Terjemah Kitab — Firestore (Array Auto-Convert, Single Column)</title>
 <link href="https://fonts.googleapis.com/css2?family=Amiri&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -44,7 +44,7 @@
     width:100%;border:1px solid var(--line);background:transparent;color:var(--txt);
     border-radius:10px;padding:9px 12px
   }
-  textarea{min-height:90px;resize:vertical}
+  textarea{min-height:120px;resize:vertical}
   .muted{color:var(--muted);font-size:12px}
   #search{max-width:360px}
 
@@ -85,7 +85,7 @@
 <header class="topbar">
   <div>
     <div class="brand">Admin Terjemah Kitab</div>
-    <div class="sub">Firestore editor • Array Auto-Convert</div>
+    <div class="sub">Firestore editor • Single Column (Arab — Terjemah)</div>
   </div>
   <div class="bar">
     <div id="userBox" class="chip">Belum login</div>
@@ -155,7 +155,10 @@
   <section class="card" style="margin-top:16px">
     <h2>Halaman (Pages)</h2>
     <div class="body">
-      <div class="muted" style="margin-bottom:8px">Ketik pada judul/teks untuk autosave (±0.8s). Atau klik “Simpan”.</div>
+      <div class="muted" style="margin-bottom:8px">
+        Format: satu baris berisi <strong>Arab — Terjemah</strong>. Contoh: <code>بسم الله — Dengan nama Allah</code>.<br>
+        Ketik untuk autosave (±0.8s) atau klik “Simpan”.
+      </div>
       <div id="pages" class="pages"></div>
     </div>
   </section>
@@ -221,7 +224,7 @@
        .replace(/[^A-Za-z0-9\u0621-\u064A]+/g,"-")
        .replace(/^-+|-+$/g,"").toLowerCase()) || ("hal-"+Date.now());
 
-  // Text → Array (otomatis split per baris)
+  // Text → Array (potong baris & trim)
   function textToArray(s){
     if (!s) return [];
     const lines = String(s).replace(/\r\n/g,"\n").split("\n");
@@ -272,11 +275,9 @@
         coverUrl: ($("#coverUrl").value||"").trim(),
         ...(Number($("#halaman").value)? {halaman:Number($("#halaman").value)} : {})
       };
-      // set createdAt hanya sekali
       if(!snap.exists() || !snap.data()?.createdAt){
         payload.createdAt = serverTimestamp();
       }
-
       await setDoc(ref, payload, { merge:true });
       toast("Metadata disimpan","ok");
     }catch(e){ toast("Gagal simpan metadata: "+e.message,"err"); }
@@ -291,8 +292,8 @@
     timers.set(key, t);
   }
 
-  /* === Page Card (textarea → array saat simpan) === */
-  function renderPageCard({docId="", index=1, judul="", id="", arabicText="", translationText=""}){
+  /* === Page Card: SINGLE COLUMN (Arab — Terjemah per baris) === */
+  function renderPageCard({docId="", index=1, judul="", id="", combinedText=""}){
     const wrap = document.createElement("details");
     wrap.className = "page";
     wrap.open = false;
@@ -322,12 +323,8 @@
         <input class="title" type="text" value="${judul||""}" placeholder="Judul halaman (boleh Arab)">
       </div>
       <div class="row">
-        <label>Arab</label>
-        <textarea class="arabText rtl" placeholder="Baris dipisah Enter…">${arabicText||""}</textarea>
-      </div>
-      <div class="row">
-        <label>Terjemah</label>
-        <textarea class="indoText" placeholder="Baris dipisah Enter…">${translationText||""}</textarea>
+        <label>Teks</label>
+        <textarea class="comboText" placeholder="Satu baris: العربية — terjemah">${combinedText||""}</textarea>
       </div>
       <div class="bar" style="justify-content:flex-end">
         <button class="btn" data-act="genid">Buat ID dari Judul</button>
@@ -352,8 +349,7 @@
     });
     summary.querySelector(".idx").addEventListener("input", ()=> autoSaveCard(wrap));
     summary.querySelector(".aid").addEventListener("input", ()=> autoSaveCard(wrap));
-    body.querySelector(".arabText").addEventListener("input", ()=> autoSaveCard(wrap));
-    body.querySelector(".indoText").addEventListener("input", ()=> autoSaveCard(wrap));
+    body.querySelector(".comboText").addEventListener("input", ()=> autoSaveCard(wrap));
 
     return wrap;
   }
@@ -370,9 +366,16 @@
     const index = Number(card.querySelector(".idx").value)||1;
     const judul = card.querySelector(".title").value.trim();
     const id    = (card.querySelector(".aid").value.trim() || slugify(judul));
-    const arabicText      = (card.querySelector(".arabText").value || "").trim();
-    const translationText = (card.querySelector(".indoText").value || "").trim();
-    return { index, judul, id, arabicText, translationText, docId: card.dataset.docId||"" };
+    const comboText = (card.querySelector(".comboText").value || "").trim();
+    return { index, judul, id, comboText, docId: card.dataset.docId||"" };
+  }
+
+  // Parser baris: "Arab — Indo" (mendukung —, –, -, ::, |)
+  function splitLine(line){
+    const parts = line.split(/\s*(?:—|–|-|::|\|)\s*/);
+    const arab  = (parts[0]||"").trim();
+    const indo  = (parts.slice(1).join(" - ")||"").trim(); // jaga jika ada tanda minus di terjemah
+    return [arab, indo];
   }
 
   async function saveCard(card){
@@ -380,31 +383,30 @@
     if(!slug) return toast("Isi slug dulu","err");
     const data = readCard(card);
     try{
-      const arabicArr = textToArray(data.arabicText);
-      const transArr  = textToArray(data.translationText);
-      const maxLen = Math.max(arabicArr.length, transArr.length);
-      while (arabicArr.length < maxLen) arabicArr.push("");
-      while (transArr.length  < maxLen) transArr.push("");
-
+      const lines = textToArray(data.comboText);
+      const arabicArr = [];
+      const transArr  = [];
+      for(const line of lines){
+        const [arab, indo] = splitLine(line);
+        arabicArr.push(arab); transArr.push(indo);
+      }
       const payload = {
         index: data.index,
         judul: data.judul,
         id: data.id,
         arabic: arabicArr,
         translation: transArr,
-        arabicText: data.arabicText,
-        translationText: data.translationText
+        combinedText: data.comboText
       };
 
       if(!data.docId){
-        // createdAt untuk page baru
         const ref = await addDoc(collection(db,"kitab",slug,"pages"), { ...payload, createdAt: serverTimestamp() });
         card.dataset.docId = ref.id;
       }else{
         await updateDoc(doc(db,"kitab",slug,"pages",data.docId), payload);
       }
       await updatePageCount(slug);
-      toast("Tersimpan (array)","ok");
+      toast("Tersimpan","ok");
     }catch(e){ toast("Gagal simpan: "+e.message,"err"); }
   }
 
@@ -435,32 +437,31 @@
     showSpin(true);
     try{
       const batch = writeBatch(db);
+      // update yang sudah punya docId
       for(const card of cards){
         const d = readCard(card);
         if(d.docId){
-          const a = textToArray(d.arabicText);
-          const t = textToArray(d.translationText);
-          const n = Math.max(a.length,t.length);
-          while(a.length<n) a.push(""); while(t.length<n) t.push("");
+          const lines = textToArray(d.comboText);
+          const a=[], t=[];
+          for(const line of lines){ const [ar, idn] = splitLine(line); a.push(ar); t.push(idn); }
           batch.update(doc(db,"kitab",slug,"pages",d.docId), {
-            index:d.index, judul:d.judul, id:d.id, arabic:a, translation:t,
-            arabicText:d.arabicText, translationText:d.translationText
+            index:d.index, judul:d.judul, id:d.id,
+            arabic:a, translation:t, combinedText:d.comboText
           });
         }
       }
       await batch.commit();
 
-      // tambah yang belum punya docId (sertakan createdAt)
+      // tambah yang belum punya docId
       for(const card of cards){
         const d = readCard(card);
         if(!d.docId){
-          const a = textToArray(d.arabicText);
-          const t = textToArray(d.translationText);
-          const n = Math.max(a.length,t.length);
-          while(a.length<n) a.push(""); while(t.length<n) t.push("");
+          const lines = textToArray(d.comboText);
+          const a=[], t=[];
+          for(const line of lines){ const [ar, idn] = splitLine(line); a.push(ar); t.push(idn); }
           const ref = await addDoc(collection(db,"kitab",slug,"pages"), {
-            index:d.index, judul:d.judul, id:d.id, arabic:a, translation:t,
-            arabicText:d.arabicText, translationText:d.translationText,
+            index:d.index, judul:d.judul, id:d.id,
+            arabic:a, translation:t, combinedText:d.comboText,
             createdAt: serverTimestamp()
           });
           card.dataset.docId = ref.id;
@@ -494,7 +495,7 @@
     showSpin(false);
   }
 
-  /* === Load all === */
+  /* === Load all (backward compatible) === */
   async function loadAll(){
     const slug = ($("#slug").value||"").trim().toLowerCase();
     if(!slug) return toast("Isi slug dulu","err");
@@ -506,13 +507,30 @@
       if(snap.empty){ pagesEl.innerHTML = `<div class="muted">Belum ada halaman.</div>`; showSpin(false); return; }
       snap.forEach(d=>{
         const x = d.data();
-        const aText = Array.isArray(x.arabic) ? x.arabic.join("\n")
-                    : typeof x.arabicText === "string" ? x.arabicText : (x.arabic||"");
-        const tText = Array.isArray(x.translation) ? x.translation.join("\n")
-                    : typeof x.translationText === "string" ? x.translationText : (x.translation||"");
+        // susun combinedText dari data lama atau field combinedText
+        let combined = "";
+        if(typeof x.combinedText === "string" && x.combinedText.trim()){
+          combined = x.combinedText;
+        }else if(Array.isArray(x.arabic) && Array.isArray(x.translation)){
+          const n = Math.max(x.arabic.length, x.translation.length);
+          const a = [...x.arabic]; const t = [...x.translation];
+          while(a.length<n) a.push(""); while(t.length<n) t.push("");
+          combined = a.map((ar,i)=>`${(ar||"").trim()} — ${(t[i]||"").trim()}`).join("\n");
+        }else{
+          // fallback lama (arabicText/translationText string)
+          const aText = typeof x.arabicText === "string" ? x.arabicText : "";
+          const tText = typeof x.translationText === "string" ? x.translationText : "";
+          const aArr = textToArray(aText); const tArr = textToArray(tText);
+          const n = Math.max(aArr.length, tArr.length);
+          while(aArr.length<n) aArr.push(""); while(tArr.length<n) tArr.push("");
+          combined = aArr.map((ar,i)=>`${(ar||"").trim()} — ${(tArr[i]||"").trim()}`).join("\n");
+        }
         const card = renderPageCard({
-          docId:d.id, index:x.index, judul:x.judul, id:x.id,
-          arabicText:aText, translationText:tText
+          docId: d.id,
+          index: x.index,
+          judul: x.judul,
+          id: x.id,
+          combinedText: combined
         });
         pagesEl.appendChild(card);
       });
@@ -542,7 +560,7 @@
     const slug = ($("#slug").value||"").trim().toLowerCase();
     if(!slug){ toast("Isi slug dulu sebelum menambah halaman","err"); $("#slug").focus(); return; }
     const maxIdx = $$("#pages .page").length + 1;
-    const c = renderPageCard({index:maxIdx, judul:"", id:"", arabicText:"", translationText:""});
+    const c = renderPageCard({index:maxIdx, judul:"", id:"", combinedText:""});
     pagesEl.appendChild(c);
     c.open = true;
     c.querySelector(".title").focus();
