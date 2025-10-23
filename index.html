@@ -132,7 +132,10 @@
           <label>Status</label>
           <input id="status" type="text" placeholder="mis. updated / new / draft / revised / soon">
         </div>
-
+        <div class="row">
+  <label>Kategori</label>
+  <input id="category" type="text" placeholder="mis. Nahwu / Fiqh / Tafsir">
+</div>
         <!-- coverUrl + preview -->
         <div class="row">
           <label>Cover URL</label>
@@ -248,6 +251,7 @@
     $("#penerjemah").value = d.penerjemah||"";
     $("#penerbit").value   = d.penerbit||"";
     $("#status").value     = d.status || "";
+    $("#category").value   = d.category || "";
     $("#coverUrl").value   = d.coverUrl || d.cover || "";
     $("#coverPreview").src = d.coverUrl || d.cover || "https://i.ibb.co/1KfX9Dy/placeholder-3x4.png";
     $("#halaman").value    = d.halaman||0;
@@ -272,6 +276,7 @@
         penerjemah: $("#penerjemah").value.trim(),
         penerbit: $("#penerbit").value.trim(),
         status: ($("#status").value||"").trim(),
+        category: ($("#category").value || "").trim(),
         coverUrl: ($("#coverUrl").value||"").trim(),
         ...(Number($("#halaman").value)? {halaman:Number($("#halaman").value)} : {})
       };
