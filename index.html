@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin Terjemah Kitab — Firestore (Array Auto-Convert, Single Column)</title>
+<title>Admin Terjemah Kitab — Firestore (Tilde + Catatan [..])</title>
 <link href="https://fonts.googleapis.com/css2?family=Amiri&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -48,7 +48,6 @@
   .muted{color:var(--muted);font-size:12px}
   #search{max-width:360px}
 
-  /* pages */
   .pages{display:grid;gap:12px}
   details.page{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:color-mix(in srgb,var(--card) 92%, #000 8%)}
   details.page summary{
@@ -64,13 +63,11 @@
   .page .body{padding:12px;border-top:1px solid var(--line)}
   .rtl{direction:rtl;text-align:right;font-family:"Amiri",serif}
 
-  /* cover preview */
   .cover-prev{
     width:120px; aspect-ratio:3/4; object-fit:cover; border-radius:10px;
     border:1px solid var(--line); background:#f3f4f6
   }
 
-  /* toast & loader */
   .toast{position:fixed;right:16px;bottom:16px;display:flex;flex-direction:column;gap:8px;z-index:60}
   .toast .item{background:var(--card);border:1px solid var(--line);padding:10px 12px;border-radius:10px;min-width:240px}
   .item.ok{border-color:color-mix(in srgb,var(--ok) 40%, var(--line) 60%)}
@@ -85,7 +82,7 @@
 <header class="topbar">
   <div>
     <div class="brand">Admin Terjemah Kitab</div>
-    <div class="sub">Firestore editor • Single Column (Arab — Terjemah)</div>
+    <div class="sub">Firestore editor • Tilde (~) + Catatan [..]</div>
   </div>
   <div class="bar">
     <div id="userBox" class="chip">Belum login</div>
@@ -96,7 +93,6 @@
 
 <div class="container">
   <div class="grid">
-    <!-- SIDEBAR -->
     <section class="card">
       <h2>Proyek & Kitab</h2>
       <div class="body">
@@ -108,7 +104,7 @@
             <button id="btnSaveAll" class="btn">Simpan Semua</button>
           </div>
         </div>
-        <p class="muted">Path: <code>kitab/&lt;slug&gt;</code> + subkoleksi <code>pages</code>.</p>
+        <p class="muted">Path: <code>kitab/&lt;slug&gt;/pages</code></p>
         <hr style="border:none;border-top:1px solid var(--line);margin:12px 0">
         <div class="row"><label>Cari</label><input id="search" type="text" placeholder="Ketik judul / id…"></div>
         <div class="bar">
@@ -119,7 +115,6 @@
       </div>
     </section>
 
-    <!-- MAIN -->
     <section class="card">
       <h2>Metadata Kitab</h2>
       <div class="body">
@@ -127,26 +122,11 @@
         <div class="row"><label>Penulis</label><input id="penulis" type="text"></div>
         <div class="row"><label>Penerjemah</label><input id="penerjemah" type="text"></div>
         <div class="row"><label>Penerbit</label><input id="penerbit" type="text"></div>
-
-        <div class="row">
-          <label>Status</label>
-          <input id="status" type="text" placeholder="mis. updated / new / draft / revised / soon">
-        </div>
-        <div class="row">
-  <label>Kategori</label>
-  <input id="category" type="text" placeholder="mis. Nahwu / Fiqh / Tafsir">
-</div>
-        <!-- coverUrl + preview -->
-        <div class="row">
-          <label>Cover URL</label>
-          <input id="coverUrl" type="text" placeholder="https://…/cover.jpg">
-        </div>
-        <div class="row">
-          <label>Preview</label>
-          <img id="coverPreview" class="cover-prev" src="https://i.ibb.co/1KfX9Dy/placeholder-3x4.png" alt="Cover preview">
-        </div>
-
-        <div class="row"><label>Halaman</label><input id="halaman" type="number" min="0" placeholder="auto dari pages"></div>
+        <div class="row"><label>Status</label><input id="status" type="text"></div>
+        <div class="row"><label>Kategori</label><input id="category" type="text"></div>
+        <div class="row"><label>Cover URL</label><input id="coverUrl" type="text"></div>
+        <div class="row"><label>Preview</label><img id="coverPreview" class="cover-prev" src="https://i.ibb.co/1KfX9Dy/placeholder-3x4.png"></div>
+        <div class="row"><label>Halaman</label><input id="halaman" type="number" min="0"></div>
         <div class="bar" style="justify-content:flex-end">
           <button id="btnSaveMeta" class="btn pri">Simpan Metadata</button>
           <button id="btnReloadMeta" class="btn">Muat Ulang</button>
@@ -159,422 +139,347 @@
     <h2>Halaman (Pages)</h2>
     <div class="body">
       <div class="muted" style="margin-bottom:8px">
-        Format: satu baris berisi <strong>Arab — Terjemah</strong>. Contoh: <code>بسم الله — Dengan nama Allah</code>.<br>
-        Ketik untuk autosave (±0.8s) atau klik “Simpan”.
+        Format: satu baris berisi <strong>Arab ~ Terjemah [Catatan]</strong><br>
+        Contoh: <code>بسم الله ~ Dengan nama Allah [Catatan: pembuka semua surat]</code>
       </div>
       <div id="pages" class="pages"></div>
     </div>
   </section>
 </div>
 
-<!-- Toasts & Loader -->
 <div class="toast" id="toast"></div>
 <div class="spinner" id="spinner"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
 
-<!-- Firebase v10 -->
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-  import {
-    initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-    doc, getDoc, setDoc, updateDoc, deleteDoc,
-    collection, getDocs, addDoc, writeBatch, query, orderBy,
-    serverTimestamp
-  } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import {
+  initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  doc, getDoc, setDoc, updateDoc, deleteDoc,
+  collection, getDocs, addDoc, writeBatch, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-  /* === CONFIG === */
-  const firebaseConfig = {
-    apiKey: "AIzaSyCco9E-DrkMGaoCXnZsP6a7IA1GwSgvU8k",
-    authDomain: "terjemah-kitab-84103.firebaseapp.com",
-    projectId: "terjemah-kitab-84103",
-    storageBucket: "terjemah-kitab-84103.firebasestorage.app",
-    messagingSenderId: "677836780803",
-    appId: "1:677836780803:web:27cff770af01a4d900a536",
-    measurementId: "G-FRWV8S6X8N"
-  };
+const firebaseConfig = {
+  apiKey: "AIzaSyCco9E-DrkMGaoCXnZsP6a7IA1GwSgvU8k",
+  authDomain: "terjemah-kitab-84103.firebaseapp.com",
+  projectId: "terjemah-kitab-84103",
+  storageBucket: "terjemah-kitab-84103.firebasestorage.app",
+  messagingSenderId: "677836780803",
+  appId: "1:677836780803:web:27cff770af01a4d900a536"
+};
+const app = initializeApp(firebaseConfig);
+const db  = initializeFirestore(app,{localCache:persistentLocalCache({tabManager:persistentMultipleTabManager()})});
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-  /* === INIT === */
-  const app = initializeApp(firebaseConfig);
-  const db  = initializeFirestore(app, {
-    experimentalAutoDetectLongPolling: true,
-    useFetchStreams: false,
-    localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+const $ = s=>document.querySelector(s);
+const $$= s=>Array.from(document.querySelectorAll(s));
+const toastEl=$("#toast"), spinEl=$("#spinner"), pagesEl=$("#pages");
+const showSpin=v=>spinEl.style.display=v?"flex":"none";
+function toast(msg,type=""){const d=document.createElement("div");d.className=`item ${type}`;d.textContent=msg;toastEl.appendChild(d);setTimeout(()=>d.remove(),2400);}
+
+onAuthStateChanged(auth,u=>{
+  $("#userBox").textContent=u?u.email:"Belum login";
+});
+$("#btnLogin").onclick=()=>signInWithPopup(auth,provider).catch(e=>toast("Login gagal: "+e.message,"err"));
+$("#btnLogout").onclick=()=>signOut(auth).then(()=>toast("Logout","ok"));
+
+function textToArray(s){if(!s)return[];const lines=String(s).replace(/\r\n/g,"\n").split("\n");let i=lines.length-1;while(i>=0&&!lines[i].trim())i--;return lines.slice(0,i+1).map(x=>x.trim());}
+
+// === parser Arab ~ Indo [Catatan]
+function splitLine(line){
+  const noteMatch=line.match(/(.+?)\s*$/);
+  const note=noteMatch?noteMatch[1].trim():"";
+  const cleanLine=line.replace(/\s*.+?\s*$/,"");
+  const parts=cleanLine.split(/\s*(?:~|—|–|-|::|\|)\s*/);
+  const arab=(parts[0]||"").trim();
+  const indo=(parts.slice(1).join(" - ")||"").trim();
+  return [arab,indo,note];
+}
+
+function slugify(s=""){return(s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9\u0621-\u064A]+/g,"-").replace(/^-+|-+$/g,"").toLowerCase())||("hal-"+Date.now());}
+
+function renderPageCard({docId="",index=1,judul="",id="",combinedText=""}){
+  const wrap=document.createElement("details");
+  wrap.className="page";
+  const summary=document.createElement("summary");
+  summary.innerHTML=`
+    <input class="idx" type="number" min="1" value="${index}">
+    <div class="summary-col"><span class="muted">Judul</span><span class="summary-title">${judul||"(tanpa judul)"}&nbsp;</span></div>
+    <input class="aid" type="text" value="${id||""}" placeholder="id (anchor)">
+    <div class="summary-actions">
+      <button class="btn" data-act="up">↑</button>
+      <button class="btn" data-act="down">↓</button>
+      <button class="btn pri" data-act="save">Simpan</button>
+      <button class="btn warn" data-act="del">Hapus</button>
+    </div>`;
+  wrap.appendChild(summary);
+  const body=document.createElement("div");
+  body.className="body";
+  body.innerHTML=`
+    <div class="row"><label>Judul</label><input class="title" type="text" value="${judul||""}"></div>
+    <div class="row"><label>Teks</label><textarea class="comboText" placeholder="Satu baris: العربية ~ terjemah [Catatan]">${combinedText||""}</textarea></div>
+    <div class="bar" style="justify-content:flex-end"><button class="btn" data-act="genid">Buat ID</button></div>`;
+  wrap.appendChild(body);
+  wrap.dataset.docId=docId;
+  wrap.addEventListener("click",async e=>{
+    const act=e.target?.dataset?.act;if(!act)return;
+    if(act==="genid")wrap.querySelector(".aid").value=slugify(wrap.querySelector(".title").value||"");
+    if(act==="up")moveCard(wrap,-1);
+    if(act==="down")moveCard(wrap,1);
+    if(act==="del")await deleteCard(wrap);
+    if(act==="save")await saveCard(wrap);
   });
-  const auth = getAuth(app);
-  const provider = new GoogleAuthProvider();
+  body.querySelector(".title").addEventListener("input",()=>{wrap.querySelector(".summary-title").textContent=body.querySelector(".title").value||"(tanpa judul)";autoSaveCard(wrap);});
+  summary.querySelector(".idx").addEventListener("input",()=>autoSaveCard(wrap));
+  summary.querySelector(".aid").addEventListener("input",()=>autoSaveCard(wrap));
+  body.querySelector(".comboText").addEventListener("input",()=>autoSaveCard(wrap));
+  return wrap;
+}
 
-  /* === DOM helpers === */
-  const $  = s => document.querySelector(s);
-  const $$ = s => Array.from(document.querySelectorAll(s));
-  const toastEl = $("#toast");
-  const spinEl  = $("#spinner");
-  const pagesEl = $("#pages");
+function moveCard(c,dir){const p=c.parentElement;if(dir<0&&c.previousElementSibling)p.insertBefore(c,c.previousElementSibling);if(dir>0&&c.nextElementSibling)p.insertBefore(c.nextElementSibling,c);[...p.children].forEach((x,i)=>x.querySelector(".idx").value=i+1);autoSaveCard(c);}
+function readCard(c){return{index:Number(c.querySelector(".idx").value)||1,judul:c.querySelector(".title").value.trim(),id:(c.querySelector(".aid").value.trim()||slugify(c.querySelector(".title").value.trim())),comboText:(c.querySelector(".comboText").value||"").trim(),docId:c.dataset.docId||""};}
 
-  const showSpin = (v=true)=> spinEl.style.display = v ? "flex" : "none";
-  function toast(msg, type=""){ const d=document.createElement("div"); d.className=`item ${type}`; d.textContent=msg; toastEl.appendChild(d); setTimeout(()=>d.remove(), 2400); }
+async function saveCard(card){
+  const slug=($("#slug").value||"").trim().toLowerCase();if(!slug)return toast("Isi slug dulu","err");
+  const data=readCard(card);
+  try{
+    const lines=textToArray(data.comboText);
+    const arabicArr=[],transArr=[],notesArr=[];
+    for(const line of lines){const[a,b,n]=splitLine(line);arabicArr.push(a);transArr.push(b);notesArr.push(n);}
+    const payload={
+      index:data.index,
+      judul:data.judul,
+      id:data.id,
+      arabic:arabicArr,
+      translation:transArr,
+      note:notesArr,              // ⬅️ simpan catatan (array, sejajar baris)
+      combinedText:data.comboText
+    };
 
-  /* === Auth === */
-  onAuthStateChanged(auth, (user)=>{
-    if(user){ $("#userBox").textContent = user.email; $("#userBox").classList.add("chip"); toast("Login: "+user.email,"ok"); }
-    else { $("#userBox").textContent = "Belum login"; }
-  });
-  $("#btnLogin").onclick  = ()=> signInWithPopup(auth, provider).catch(e=> toast("Login gagal: "+e.message,"err"));
-  $("#btnLogout").onclick = ()=> signOut(auth).then(()=> toast("Logout","ok")).catch(e=> toast("Logout gagal: "+e.message,"err"));
+    if(!data.docId){
+      const ref=await addDoc(collection(db,"kitab",slug,"pages"),{...payload,createdAt:serverTimestamp()});
+      card.dataset.docId=ref.id;
+    }else{
+      await updateDoc(doc(db,"kitab",slug,"pages",data.docId),payload);
+    }
+    await updatePageCount(slug);
+    toast("Tersimpan","ok");
+  }catch(e){toast("Gagal simpan: "+e.message,"err");}
+}
 
-  /* === Utils === */
-  const slugify = (s="") =>
-    (s.normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-       .replace(/[^A-Za-z0-9\u0621-\u064A]+/g,"-")
-       .replace(/^-+|-+$/g,"").toLowerCase()) || ("hal-"+Date.now());
+const timers=new Map();
+function debounce(key,fn,wait=800){clearTimeout(timers.get(key));const t=setTimeout(fn,wait);timers.set(key,t);}
+function autoSaveCard(card){
+  const slug=($("#slug").value||"").trim().toLowerCase();
+  if(!slug)return;
+  debounce(`page-${card.dataset.docId||Math.random()}`,()=>saveCard(card),800);
+}
 
-  // Text → Array (potong baris & trim)
-  function textToArray(s){
-    if (!s) return [];
-    const lines = String(s).replace(/\r\n/g,"\n").split("\n");
-    let i = lines.length - 1;
-    while (i >= 0 && !lines[i].trim()) i--;
-    return lines.slice(0, i + 1).map(x => x.trim());
-  }
+async function deleteCard(card){
+  const slug=($("#slug").value||"").trim().toLowerCase();
+  if(!slug)return toast("Isi slug dulu","err");
+  if(!confirm("Hapus halaman ini?"))return;
+  try{
+    const id=card.dataset.docId;
+    if(id)await deleteDoc(doc(db,"kitab",slug,"pages",id));
+    card.remove();
+    await updatePageCount(slug);
+    toast("Halaman dihapus","ok");
+  }catch(e){toast("Gagal hapus: "+e.message,"err");}
+}
 
-  async function updatePageCount(slug){
-    const snap = await getDocs(collection(db,"kitab",slug,"pages"));
-    await setDoc(doc(db,"kitab",slug), { halaman: snap.size }, { merge:true });
-  }
-
-  /* === Metadata === */
-  async function loadMeta(slug){
-    const s = await getDoc(doc(db,"kitab",slug));
-    if(!s.exists()){ toast("Metadata belum ada","err"); return; }
-    const d = s.data();
-    $("#judul").value      = d.judul||"";
-    $("#penulis").value    = d.penulis||"";
-    $("#penerjemah").value = d.penerjemah||"";
-    $("#penerbit").value   = d.penerbit||"";
-    $("#status").value     = d.status || "";
-    $("#category").value   = d.category || "";
-    $("#coverUrl").value   = d.coverUrl || d.cover || "";
-    $("#coverPreview").src = d.coverUrl || d.cover || "https://i.ibb.co/1KfX9Dy/placeholder-3x4.png";
-    $("#halaman").value    = d.halaman||0;
-  }
-
-  // preview cover live
-  $("#coverUrl").addEventListener("input", (e)=>{
-    $("#coverPreview").src = e.target.value.trim() || "https://i.ibb.co/1KfX9Dy/placeholder-3x4.png";
-  });
-
-  async function saveMeta(){
-    const slug = ($("#slug").value||"").trim().toLowerCase();
-    if(!slug) return toast("Isi slug dulu","err");
-    showSpin(true);
-    try{
-      const ref = doc(db,"kitab",slug);
-      const snap= await getDoc(ref);
-
-      const payload = {
-        judul: $("#judul").value.trim(),
-        penulis: $("#penulis").value.trim(),
-        penerjemah: $("#penerjemah").value.trim(),
-        penerbit: $("#penerbit").value.trim(),
-        status: ($("#status").value||"").trim(),
-        category: ($("#category").value || "").trim(),
-        coverUrl: ($("#coverUrl").value||"").trim(),
-        ...(Number($("#halaman").value)? {halaman:Number($("#halaman").value)} : {})
-      };
-      if(!snap.exists() || !snap.data()?.createdAt){
-        payload.createdAt = serverTimestamp();
-      }
-      await setDoc(ref, payload, { merge:true });
-      toast("Metadata disimpan","ok");
-    }catch(e){ toast("Gagal simpan metadata: "+e.message,"err"); }
-    showSpin(false);
-  }
-
-  /* === Debounce helper (autosave) === */
-  const timers = new Map();
-  function debounce(key, fn, wait=800){
-    clearTimeout(timers.get(key));
-    const t = setTimeout(fn, wait);
-    timers.set(key, t);
-  }
-
-  /* === Page Card: SINGLE COLUMN (Arab — Terjemah per baris) === */
-  function renderPageCard({docId="", index=1, judul="", id="", combinedText=""}){
-    const wrap = document.createElement("details");
-    wrap.className = "page";
-    wrap.open = false;
-
-    const summary = document.createElement("summary");
-    summary.innerHTML = `
-      <input class="idx" type="number" min="1" value="${index}">
-      <div class="summary-col">
-        <span class="muted">Judul</span>
-        <span class="summary-title">${judul || "(tanpa judul)"}&nbsp;</span>
-      </div>
-      <input class="aid" type="text" value="${id||""}" placeholder="id (anchor)">
-      <div class="summary-actions">
-        <button class="btn" data-act="up"   title="Naik">↑</button>
-        <button class="btn" data-act="down" title="Turun">↓</button>
-        <button class="btn pri" data-act="save" title="Simpan">Simpan</button>
-        <button class="btn warn" data-act="del"  title="Hapus">Hapus</button>
-      </div>
-    `;
-    wrap.appendChild(summary);
-
-    const body = document.createElement("div");
-    body.className = "body";
-    body.innerHTML = `
-      <div class="row">
-        <label>Judul</label>
-        <input class="title" type="text" value="${judul||""}" placeholder="Judul halaman (boleh Arab)">
-      </div>
-      <div class="row">
-        <label>Teks</label>
-        <textarea class="comboText" placeholder="Satu baris: العربية — terjemah">${combinedText||""}</textarea>
-      </div>
-      <div class="bar" style="justify-content:flex-end">
-        <button class="btn" data-act="genid">Buat ID dari Judul</button>
-      </div>
-    `;
-    wrap.appendChild(body);
-
-    wrap.dataset.docId = docId;
-
-    wrap.addEventListener("click", async (e)=>{
-      const act = e.target?.dataset?.act; if(!act) return;
-      if(act==="genid")  wrap.querySelector(".aid").value = slugify(wrap.querySelector(".title").value||"");
-      if(act==="up")     moveCard(wrap,-1);
-      if(act==="down")   moveCard(wrap,  1);
-      if(act==="del")    await deleteCard(wrap);
-      if(act==="save")   await saveCard(wrap);
-    });
-
-    body.querySelector(".title").addEventListener("input", ()=>{ 
-      wrap.querySelector(".summary-title").textContent = body.querySelector(".title").value || "(tanpa judul)"; 
-      autoSaveCard(wrap);
-    });
-    summary.querySelector(".idx").addEventListener("input", ()=> autoSaveCard(wrap));
-    summary.querySelector(".aid").addEventListener("input", ()=> autoSaveCard(wrap));
-    body.querySelector(".comboText").addEventListener("input", ()=> autoSaveCard(wrap));
-
-    return wrap;
-  }
-
-  function moveCard(card, dir){
-    const parent = card.parentElement;
-    if(dir<0 && card.previousElementSibling) parent.insertBefore(card, card.previousElementSibling);
-    if(dir>0 && card.nextElementSibling)     parent.insertBefore(card.nextElementSibling, card);
-    [...parent.children].forEach((c,i)=> c.querySelector(".idx").value = i+1);
-    autoSaveCard(card);
-  }
-
-  function readCard(card){
-    const index = Number(card.querySelector(".idx").value)||1;
-    const judul = card.querySelector(".title").value.trim();
-    const id    = (card.querySelector(".aid").value.trim() || slugify(judul));
-    const comboText = (card.querySelector(".comboText").value || "").trim();
-    return { index, judul, id, comboText, docId: card.dataset.docId||"" };
-  }
-
-  // Parser baris: "Arab — Indo" (mendukung —, –, -, ::, |)
-  function splitLine(line){
-    const parts = line.split(/\s*(?:—|–|-|::|\|)\s*/);
-    const arab  = (parts[0]||"").trim();
-    const indo  = (parts.slice(1).join(" - ")||"").trim(); // jaga jika ada tanda minus di terjemah
-    return [arab, indo];
-  }
-
-  async function saveCard(card){
-    const slug = ($("#slug").value||"").trim().toLowerCase();
-    if(!slug) return toast("Isi slug dulu","err");
-    const data = readCard(card);
-    try{
-      const lines = textToArray(data.comboText);
-      const arabicArr = [];
-      const transArr  = [];
-      for(const line of lines){
-        const [arab, indo] = splitLine(line);
-        arabicArr.push(arab); transArr.push(indo);
-      }
-      const payload = {
-        index: data.index,
-        judul: data.judul,
-        id: data.id,
-        arabic: arabicArr,
-        translation: transArr,
-        combinedText: data.comboText
-      };
-
-      if(!data.docId){
-        const ref = await addDoc(collection(db,"kitab",slug,"pages"), { ...payload, createdAt: serverTimestamp() });
-        card.dataset.docId = ref.id;
-      }else{
-        await updateDoc(doc(db,"kitab",slug,"pages",data.docId), payload);
-      }
-      await updatePageCount(slug);
-      toast("Tersimpan","ok");
-    }catch(e){ toast("Gagal simpan: "+e.message,"err"); }
-  }
-
-  function autoSaveCard(card){
-    const slug = ($("#slug").value||"").trim().toLowerCase();
-    if(!slug) return;
-    debounce(`page-${card.dataset.docId || Math.random()}`, ()=> saveCard(card), 800);
-  }
-
-  async function deleteCard(card){
-    const slug = ($("#slug").value||"").trim().toLowerCase();
-    if(!slug) return toast("Isi slug dulu","err");
-    if(!confirm("Hapus halaman ini?")) return;
-    try{
-      const id = card.dataset.docId;
-      if(id) await deleteDoc(doc(db,"kitab",slug,"pages",id));
-      card.remove();
-      await updatePageCount(slug);
-      toast("Halaman dihapus","ok");
-    }catch(e){ toast("Gagal hapus: "+e.message,"err"); }
-  }
-
-  /* === Batch ops === */
-  async function saveAll(){
-    const slug = ($("#slug").value||"").trim().toLowerCase();
-    if(!slug) return toast("Isi slug dulu","err");
-    const cards = $$("#pages .page");
-    showSpin(true);
-    try{
-      const batch = writeBatch(db);
-      // update yang sudah punya docId
-      for(const card of cards){
-        const d = readCard(card);
-        if(d.docId){
-          const lines = textToArray(d.comboText);
-          const a=[], t=[];
-          for(const line of lines){ const [ar, idn] = splitLine(line); a.push(ar); t.push(idn); }
-          batch.update(doc(db,"kitab",slug,"pages",d.docId), {
-            index:d.index, judul:d.judul, id:d.id,
-            arabic:a, translation:t, combinedText:d.comboText
-          });
-        }
-      }
-      await batch.commit();
-
-      // tambah yang belum punya docId
-      for(const card of cards){
-        const d = readCard(card);
-        if(!d.docId){
-          const lines = textToArray(d.comboText);
-          const a=[], t=[];
-          for(const line of lines){ const [ar, idn] = splitLine(line); a.push(ar); t.push(idn); }
-          const ref = await addDoc(collection(db,"kitab",slug,"pages"), {
-            index:d.index, judul:d.judul, id:d.id,
-            arabic:a, translation:t, combinedText:d.comboText,
-            createdAt: serverTimestamp()
-          });
-          card.dataset.docId = ref.id;
-        }
-      }
-      await updatePageCount(slug);
-      toast("Simpan semua selesai","ok");
-    }catch(e){ toast("Gagal simpan semua: "+e.message,"err"); }
-    showSpin(false);
-  }
-
-  async function reindexAll(){
-    const slug = ($("#slug").value||"").trim().toLowerCase();
-    if(!slug) return toast("Isi slug dulu","err");
-    const cards = $$("#pages .page");
-    showSpin(true);
-    try{
-      cards.forEach((c,i)=> c.querySelector(".idx").value = i+1);
-      const batch = writeBatch(db);
-      for(const card of cards){
-        const id = card.dataset.docId;
-        if(id){
-          const idx = Number(card.querySelector(".idx").value)||1;
-          batch.update(doc(db,"kitab",slug,"pages",id), { index: idx });
-        }
-      }
-      await batch.commit();
-      await updatePageCount(slug);
-      toast("Reindex selesai","ok");
-    }catch(e){ toast("Gagal reindex: "+e.message,"err"); }
-    showSpin(false);
-  }
-
-  /* === Load all (backward compatible) === */
-  async function loadAll(){
-    const slug = ($("#slug").value||"").trim().toLowerCase();
-    if(!slug) return toast("Isi slug dulu","err");
-    showSpin(true);
-    try{
-      await loadMeta(slug);
-      pagesEl.innerHTML = "";
-      const snap = await getDocs(query(collection(db,"kitab",slug,"pages"), orderBy("index","asc")));
-      if(snap.empty){ pagesEl.innerHTML = `<div class="muted">Belum ada halaman.</div>`; showSpin(false); return; }
-      snap.forEach(d=>{
-        const x = d.data();
-        // susun combinedText dari data lama atau field combinedText
-        let combined = "";
-        if(typeof x.combinedText === "string" && x.combinedText.trim()){
-          combined = x.combinedText;
-        }else if(Array.isArray(x.arabic) && Array.isArray(x.translation)){
-          const n = Math.max(x.arabic.length, x.translation.length);
-          const a = [...x.arabic]; const t = [...x.translation];
-          while(a.length<n) a.push(""); while(t.length<n) t.push("");
-          combined = a.map((ar,i)=>`${(ar||"").trim()} — ${(t[i]||"").trim()}`).join("\n");
-        }else{
-          // fallback lama (arabicText/translationText string)
-          const aText = typeof x.arabicText === "string" ? x.arabicText : "";
-          const tText = typeof x.translationText === "string" ? x.translationText : "";
-          const aArr = textToArray(aText); const tArr = textToArray(tText);
-          const n = Math.max(aArr.length, tArr.length);
-          while(aArr.length<n) aArr.push(""); while(tArr.length<n) tArr.push("");
-          combined = aArr.map((ar,i)=>`${(ar||"").trim()} — ${(tArr[i]||"").trim()}`).join("\n");
-        }
-        const card = renderPageCard({
-          docId: d.id,
-          index: x.index,
-          judul: x.judul,
-          id: x.id,
-          combinedText: combined
+async function saveAll(){
+  const slug=($("#slug").value||"").trim().toLowerCase();
+  if(!slug)return toast("Isi slug dulu","err");
+  const cards=$$("#pages .page");
+  showSpin(true);
+  try{
+    const batch=writeBatch(db);
+    // Update yang sudah ada docId
+    for(const card of cards){
+      const d=readCard(card);
+      if(d.docId){
+        const lines=textToArray(d.comboText);
+        const a=[],t=[],n=[];
+        for(const line of lines){const[ar,idn,note]=splitLine(line);a.push(ar);t.push(idn);n.push(note);}
+        batch.update(doc(db,"kitab",slug,"pages",d.docId),{
+          index:d.index,judul:d.judul,id:d.id,
+          arabic:a,translation:t,note:n,combinedText:d.comboText
         });
-        pagesEl.appendChild(card);
+      }
+    }
+    await batch.commit();
+
+    // Tambah yang baru (belum punya docId)
+    for(const card of cards){
+      const d=readCard(card);
+      if(!d.docId){
+        const lines=textToArray(d.comboText);
+        const a=[],t=[],n=[];
+        for(const line of lines){const[ar,idn,note]=splitLine(line);a.push(ar);t.push(idn);n.push(note);}
+        const ref=await addDoc(collection(db,"kitab",slug,"pages"),{
+          index:d.index,judul:d.judul,id:d.id,
+          arabic:a,translation:t,note:n,combinedText:d.comboText,
+          createdAt:serverTimestamp()
+        });
+        card.dataset.docId=ref.id;
+      }
+    }
+    await updatePageCount(slug);
+    toast("Simpan semua selesai","ok");
+  }catch(e){toast("Gagal simpan semua: "+e.message,"err");}
+  showSpin(false);
+}
+
+async function reindexAll(){
+  const slug=($("#slug").value||"").trim().toLowerCase();
+  if(!slug)return toast("Isi slug dulu","err");
+  const cards=$$("#pages .page");
+  showSpin(true);
+  try{
+    cards.forEach((c,i)=>c.querySelector(".idx").value=i+1);
+    const batch=writeBatch(db);
+    for(const card of cards){
+      const id=card.dataset.docId;
+      if(id){
+        const idx=Number(card.querySelector(".idx").value)||1;
+        batch.update(doc(db,"kitab",slug,"pages",id),{index:idx});
+      }
+    }
+    await batch.commit();
+    await updatePageCount(slug);
+    toast("Reindex selesai","ok");
+  }catch(e){toast("Gagal reindex: "+e.message,"err");}
+  showSpin(false);
+}
+
+async function updatePageCount(slug){
+  const snap=await getDocs(collection(db,"kitab",slug,"pages"));
+  await setDoc(doc(db,"kitab",slug),{halaman:snap.size},{merge:true});
+}
+
+/* ===== Metadata ===== */
+async function loadMeta(slug){
+  const s=await getDoc(doc(db,"kitab",slug));
+  if(!s.exists()){toast("Metadata belum ada","err");return;}
+  const d=s.data();
+  $("#judul").value=d.judul||"";
+  $("#penulis").value=d.penulis||"";
+  $("#penerjemah").value=d.penerjemah||"";
+  $("#penerbit").value=d.penerbit||"";
+  $("#status").value=d.status||"";
+  $("#category").value=d.category||"";
+  $("#coverUrl").value=d.coverUrl||d.cover||"";
+  $("#coverPreview").src=d.coverUrl||d.cover||"https://i.ibb.co/1KfX9Dy/placeholder-3x4.png";
+  $("#halaman").value=d.halaman||0;
+}
+$("#coverUrl").addEventListener("input",e=>{
+  $("#coverPreview").src=e.target.value.trim()||"https://i.ibb.co/1KfX9Dy/placeholder-3x4.png";
+});
+
+async function saveMeta(){
+  const slug=($("#slug").value||"").trim().toLowerCase();
+  if(!slug)return toast("Isi slug dulu","err");
+  showSpin(true);
+  try{
+    const ref=doc(db,"kitab",slug);
+    const snap=await getDoc(ref);
+    const payload={
+      judul:$("#judul").value.trim(),
+      penulis:$("#penulis").value.trim(),
+      penerjemah:$("#penerjemah").value.trim(),
+      penerbit:$("#penerbit").value.trim(),
+      status:($("#status").value||"").trim(),
+      category:($("#category").value||"").trim(),
+      coverUrl:($("#coverUrl").value||"").trim(),
+      ...(Number($("#halaman").value)?{halaman:Number($("#halaman").value)}:{})
+    };
+    if(!snap.exists()||!snap.data()?.createdAt){payload.createdAt=serverTimestamp();}
+    await setDoc(ref,payload,{merge:true});
+    toast("Metadata disimpan","ok");
+  }catch(e){toast("Gagal simpan metadata: "+e.message,"err");}
+  showSpin(false);
+}
+
+/* ===== Load semua halaman ===== */
+async function loadAll(){
+  const slug=($("#slug").value||"").trim().toLowerCase();
+  if(!slug)return toast("Isi slug dulu","err");
+  showSpin(true);
+  try{
+    await loadMeta(slug);
+    pagesEl.innerHTML="";
+    const snap=await getDocs(query(collection(db,"kitab",slug,"pages"),orderBy("index","asc")));
+    if(snap.empty){pagesEl.innerHTML=`<div class="muted">Belum ada halaman.</div>`;showSpin(false);return;}
+    snap.forEach(d=>{
+      const x=d.data();
+      // Bangun combinedText:
+      let combined="";
+      if(typeof x.combinedText==="string"&&x.combinedText.trim()){
+        // Pastikan baris yang punya note di array x.note tetap muncul
+        // Jika combinedText sudah lengkap, pakai apa adanya.
+        combined=x.combinedText;
+      }else{
+        // Susun dari array arabic/translation/note
+        const a=Array.isArray(x.arabic)?[...x.arabic]:[];
+        const t=Array.isArray(x.translation)?[...x.translation]:[];
+        const n=Array.isArray(x.note)?[...x.note]:[];
+        const len=Math.max(a.length,t.length,n.length);
+        while(a.length<len)a.push("");
+        while(t.length<len)t.push("");
+        while(n.length<len)n.push("");
+        combined=a.map((ar,i)=>{
+          const base=`${(ar||"").trim()} ~ ${(t[i]||"").trim()}`;
+          const note=(n[i]||"").trim();
+          return note?`${base} [${note}]`:base;
+        }).join("\n");
+      }
+      const card=renderPageCard({
+        docId:d.id,
+        index:x.index,
+        judul:x.judul||"",
+        id:x.id||"",
+        combinedText:combined
       });
-      toast(`Memuat ${snap.size} halaman`,"ok");
-    }catch(e){ toast("Gagal memuat: "+e.message,"err"); }
-    showSpin(false);
-  }
-
-  /* === Search / Filter === */
-  $("#search").addEventListener("input", (e)=>{
-    const q = e.target.value.trim().toLowerCase();
-    $$("#pages .page").forEach(card=>{
-      const title = card.querySelector(".summary-title")?.textContent.toLowerCase() || "";
-      const aid   = card.querySelector(".aid")?.value.toLowerCase() || "";
-      card.style.display = (title.includes(q) || aid.includes(q)) ? "" : "none";
+      pagesEl.appendChild(card);
     });
+    toast(`Memuat ${snap.size} halaman`,"ok");
+  }catch(e){toast("Gagal memuat: "+e.message,"err");}
+  showSpin(false);
+}
+
+/* ===== Search / Filter ===== */
+$("#search").addEventListener("input",e=>{
+  const q=e.target.value.trim().toLowerCase();
+  $$("#pages .page").forEach(card=>{
+    const title=card.querySelector(".summary-title")?.textContent.toLowerCase()||"";
+    const aid=card.querySelector(".aid")?.value.toLowerCase()||"";
+    card.style.display=(title.includes(q)||aid.includes(q))?"":"none";
   });
+});
 
-  /* === UI events === */
-  $("#btnSaveMeta").onclick    = ()=> saveMeta();
-  $("#btnReloadMeta").onclick  = ()=> { const s=($("#slug").value||"").trim().toLowerCase(); if(!s) return toast("Isi slug dulu","err"); loadMeta(s).catch(e=>toast(e.message,"err")); };
-  $("#btnLoadAll").onclick     = ()=> loadAll();
-  $("#btnReindex").onclick     = ()=> reindexAll();
-  $("#btnSaveAll").onclick     = ()=> saveAll();
+/* ===== UI events ===== */
+$("#btnSaveMeta").onclick=()=>saveMeta();
+$("#btnReloadMeta").onclick=()=>{const s=($("#slug").value||"").trim().toLowerCase();if(!s)return toast("Isi slug dulu","err");loadMeta(s).catch(e=>toast(e.message,"err"));};
+$("#btnLoadAll").onclick=()=>loadAll();
+$("#btnReindex").onclick=()=>reindexAll();
+$("#btnSaveAll").onclick=()=>saveAll();
 
-  function addNewCard(){
-    const slug = ($("#slug").value||"").trim().toLowerCase();
-    if(!slug){ toast("Isi slug dulu sebelum menambah halaman","err"); $("#slug").focus(); return; }
-    const maxIdx = $$("#pages .page").length + 1;
-    const c = renderPageCard({index:maxIdx, judul:"", id:"", combinedText:""});
-    pagesEl.appendChild(c);
-    c.open = true;
-    c.querySelector(".title").focus();
-    c.scrollIntoView({behavior:"smooth", block:"start"});
-  }
-  $("#btnAddPage").onclick = addNewCard;
+function addNewCard(){
+  const slug=($("#slug").value||"").trim().toLowerCase();
+  if(!slug){toast("Isi slug dulu sebelum menambah halaman","err");$("#slug").focus();return;}
+  const maxIdx=$$("#pages .page").length+1;
+  const c=renderPageCard({index:maxIdx,judul:"",id:"",combinedText:""});
+  pagesEl.appendChild(c);
+  c.open=true;
+  c.querySelector(".title").focus();
+  c.scrollIntoView({behavior:"smooth",block:"start"});
+}
+$("#btnAddPage").onclick=addNewCard;
 
-  $("#btnExpand").onclick  = ()=> $$("#pages .page").forEach(c=> c.open = true);
-  $("#btnCollapse").onclick= ()=> $$("#pages .page").forEach(c=> c.open = false);
+$("#btnExpand").onclick=()=>$$("#pages .page").forEach(c=>c.open=true);
+$("#btnCollapse").onclick=()=>$$("#pages .page").forEach(c=>c.open=false);
 </script>
 </body>
 </html>
