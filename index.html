@@ -96,7 +96,16 @@
     <section class="card">
       <h2>Proyek & Kitab</h2>
       <div class="body">
-        <div class="row"><label>Slug</label><input id="slug" type="text" placeholder="ajrumiyyah"></div>
+        <!-- Slug: dropdown + opsi slug baru -->
+        <div class="row">
+          <label>Slug</label>
+          <div class="bar" style="gap:8px;align-items:center">
+            <select id="slugSelect" title="Pilih slug kitab"></select>
+            <input id="slug" type="text" placeholder="slug baru…" style="width:220px;display:none">
+            <button id="btnNewSlug" class="btn">Slug Baru</button>
+          </div>
+        </div>
+
         <div class="row"><label>Actions</label>
           <div class="bar">
             <button id="btnLoadAll" class="btn pri">Muat</button>
@@ -184,21 +193,64 @@ onAuthStateChanged(auth,u=>{
 $("#btnLogin").onclick=()=>signInWithPopup(auth,provider).catch(e=>toast("Login gagal: "+e.message,"err"));
 $("#btnLogout").onclick=()=>signOut(auth).then(()=>toast("Logout","ok"));
 
+/* ===================== SLUG DROPDOWN ===================== */
+function setSlugValue(v){ $("#slug").value=(v||"").trim().toLowerCase(); }
+async function populateSlugSelect(){
+  const sel=$("#slugSelect");
+  sel.innerHTML = `<option value="">— pilih slug —</option><option value="__new__">+ Slug baru…</option>`;
+  try{
+    const snap = await getDocs(collection(db,"kitab"));
+    const items=[];
+    snap.forEach(d=>{
+      const x=d.data()||{};
+      items.push({ id:d.id, judul:x.judul||d.id });
+    });
+    items.sort((a,b)=>a.judul.localeCompare(b.judul,'id'));
+    for(const it of items){
+      const opt=document.createElement("option");
+      opt.value=it.id;
+      opt.textContent=`${it.judul} — ${it.id}`;
+      sel.appendChild(opt);
+    }
+  }catch(e){
+    toast("Gagal memuat daftar slug: "+e.message,"err");
+  }
+}
+$("#slugSelect").addEventListener("change",(e)=>{
+  const v=e.target.value;
+  if(v==="__new__"){
+    $("#slug").style.display="";
+    setSlugValue("");
+    $("#slug").focus();
+  }else{
+    $("#slug").style.display="none";
+    setSlugValue(v||"");
+  }
+});
+$("#btnNewSlug").onclick=()=>{
+  $("#slugSelect").value="__new__";
+  $("#slug").style.display="";
+  setSlugValue("");
+  $("#slug").focus();
+};
+
+/* ===================== UTIL & PARSER ===================== */
 function textToArray(s){if(!s)return[];const lines=String(s).replace(/\r\n/g,"\n").split("\n");let i=lines.length-1;while(i>=0&&!lines[i].trim())i--;return lines.slice(0,i+1).map(x=>x.trim());}
 
-// === parser Arab ~ Indo [Catatan]
+// Parser: Arab ~ Indo [Catatan]  (catatan diambil dari tanda kurung siku terakhir di akhir baris)
 function splitLine(line){
-  const noteMatch=line.match(/(.+?)\s*$/);
-  const note=noteMatch?noteMatch[1].trim():"";
-  const cleanLine=line.replace(/\s*.+?\s*$/,"");
-  const parts=cleanLine.split(/\s*(?:~|—|–|-|::|\|)\s*/);
-  const arab=(parts[0]||"").trim();
-  const indo=(parts.slice(1).join(" - ")||"").trim();
+  const noteMatch = line.match(/\[([^\]]+)\]\s*$/);          // ← pakai [ ... ] di akhir
+  const note      = noteMatch ? noteMatch[1].trim() : "";
+  const cleanLine = line.replace(/\s*\[[^\]]+\]\s*$/,"");     // buang [..] dari line
+  const parts     = cleanLine.split(/\s*(?:~|—|–|-|::|\|)\s*/);
+  const arab      = (parts[0]||"").trim();
+  const indo      = (parts.slice(1).join(" - ")||"").trim();
   return [arab,indo,note];
 }
 
 function slugify(s=""){return(s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^A-Za-z0-9\u0621-\u064A]+/g,"-").replace(/^-+|-+$/g,"").toLowerCase())||("hal-"+Date.now());}
 
+/* ===================== RENDER KARTU HALAMAN ===================== */
 function renderPageCard({docId="",index=1,judul="",id="",combinedText=""}){
   const wrap=document.createElement("details");
   wrap.className="page";
@@ -240,8 +292,9 @@ function renderPageCard({docId="",index=1,judul="",id="",combinedText=""}){
 function moveCard(c,dir){const p=c.parentElement;if(dir<0&&c.previousElementSibling)p.insertBefore(c,c.previousElementSibling);if(dir>0&&c.nextElementSibling)p.insertBefore(c.nextElementSibling,c);[...p.children].forEach((x,i)=>x.querySelector(".idx").value=i+1);autoSaveCard(c);}
 function readCard(c){return{index:Number(c.querySelector(".idx").value)||1,judul:c.querySelector(".title").value.trim(),id:(c.querySelector(".aid").value.trim()||slugify(c.querySelector(".title").value.trim())),comboText:(c.querySelector(".comboText").value||"").trim(),docId:c.dataset.docId||""};}
 
+/* ===================== CRUD HALAMAN ===================== */
 async function saveCard(card){
-  const slug=($("#slug").value||"").trim().toLowerCase();if(!slug)return toast("Isi slug dulu","err");
+  const slug=($("#slug").value||"").trim().toLowerCase();if(!slug)return toast("Isi/pilih slug dulu","err");
   const data=readCard(card);
   try{
     const lines=textToArray(data.comboText);
@@ -253,7 +306,7 @@ async function saveCard(card){
       id:data.id,
       arabic:arabicArr,
       translation:transArr,
-      note:notesArr,              // ⬅️ simpan catatan (array, sejajar baris)
+      note:notesArr,              // ← catatan dari [ ... ]
       combinedText:data.comboText
     };
 
@@ -278,7 +331,7 @@ function autoSaveCard(card){
 
 async function deleteCard(card){
   const slug=($("#slug").value||"").trim().toLowerCase();
-  if(!slug)return toast("Isi slug dulu","err");
+  if(!slug)return toast("Isi/pilih slug dulu","err");
   if(!confirm("Hapus halaman ini?"))return;
   try{
     const id=card.dataset.docId;
@@ -291,7 +344,7 @@ async function deleteCard(card){
 
 async function saveAll(){
   const slug=($("#slug").value||"").trim().toLowerCase();
-  if(!slug)return toast("Isi slug dulu","err");
+  if(!slug)return toast("Isi/pilih slug dulu","err");
   const cards=$$("#pages .page");
   showSpin(true);
   try{
@@ -334,7 +387,7 @@ async function saveAll(){
 
 async function reindexAll(){
   const slug=($("#slug").value||"").trim().toLowerCase();
-  if(!slug)return toast("Isi slug dulu","err");
+  if(!slug)return toast("Isi/pilih slug dulu","err");
   const cards=$$("#pages .page");
   showSpin(true);
   try{
@@ -359,7 +412,7 @@ async function updatePageCount(slug){
   await setDoc(doc(db,"kitab",slug),{halaman:snap.size},{merge:true});
 }
 
-/* ===== Metadata ===== */
+/* ===================== METADATA ===================== */
 async function loadMeta(slug){
   const s=await getDoc(doc(db,"kitab",slug));
   if(!s.exists()){toast("Metadata belum ada","err");return;}
@@ -375,12 +428,12 @@ async function loadMeta(slug){
   $("#halaman").value=d.halaman||0;
 }
 $("#coverUrl").addEventListener("input",e=>{
-  $("#coverPreview").src=e.target.value.trim()||"https://i.ibb.co/1KfX9Dy/placeholder-3x4.png";
+  $("#coverPreview").src=e.target.value.trim()||"https://i.ibb.co/1KfX3Dy/placeholder-3x4.png";
 });
 
 async function saveMeta(){
   const slug=($("#slug").value||"").trim().toLowerCase();
-  if(!slug)return toast("Isi slug dulu","err");
+  if(!slug)return toast("Isi/pilih slug dulu","err");
   showSpin(true);
   try{
     const ref=doc(db,"kitab",slug);
@@ -402,10 +455,10 @@ async function saveMeta(){
   showSpin(false);
 }
 
-/* ===== Load semua halaman ===== */
+/* ===================== LOAD SEMUA HALAMAN ===================== */
 async function loadAll(){
   const slug=($("#slug").value||"").trim().toLowerCase();
-  if(!slug)return toast("Isi slug dulu","err");
+  if(!slug)return toast("Isi/pilih slug dulu","err");
   showSpin(true);
   try{
     await loadMeta(slug);
@@ -414,14 +467,11 @@ async function loadAll(){
     if(snap.empty){pagesEl.innerHTML=`<div class="muted">Belum ada halaman.</div>`;showSpin(false);return;}
     snap.forEach(d=>{
       const x=d.data();
-      // Bangun combinedText:
+      // Bangun combinedText jika kosong
       let combined="";
       if(typeof x.combinedText==="string"&&x.combinedText.trim()){
-        // Pastikan baris yang punya note di array x.note tetap muncul
-        // Jika combinedText sudah lengkap, pakai apa adanya.
         combined=x.combinedText;
       }else{
-        // Susun dari array arabic/translation/note
         const a=Array.isArray(x.arabic)?[...x.arabic]:[];
         const t=Array.isArray(x.translation)?[...x.translation]:[];
         const n=Array.isArray(x.note)?[...x.note]:[];
@@ -449,7 +499,7 @@ async function loadAll(){
   showSpin(false);
 }
 
-/* ===== Search / Filter ===== */
+/* ===================== SEARCH & UI BINDINGS ===================== */
 $("#search").addEventListener("input",e=>{
   const q=e.target.value.trim().toLowerCase();
   $$("#pages .page").forEach(card=>{
@@ -459,16 +509,15 @@ $("#search").addEventListener("input",e=>{
   });
 });
 
-/* ===== UI events ===== */
 $("#btnSaveMeta").onclick=()=>saveMeta();
-$("#btnReloadMeta").onclick=()=>{const s=($("#slug").value||"").trim().toLowerCase();if(!s)return toast("Isi slug dulu","err");loadMeta(s).catch(e=>toast(e.message,"err"));};
+$("#btnReloadMeta").onclick=()=>{const s=($("#slug").value||"").trim().toLowerCase();if(!s)return toast("Isi/pilih slug dulu","err");loadMeta(s).catch(e=>toast(e.message,"err"));};
 $("#btnLoadAll").onclick=()=>loadAll();
 $("#btnReindex").onclick=()=>reindexAll();
 $("#btnSaveAll").onclick=()=>saveAll();
 
 function addNewCard(){
   const slug=($("#slug").value||"").trim().toLowerCase();
-  if(!slug){toast("Isi slug dulu sebelum menambah halaman","err");$("#slug").focus();return;}
+  if(!slug){toast("Pilih atau buat slug dulu sebelum menambah halaman","err");$("#slugSelect").focus();return;}
   const maxIdx=$$("#pages .page").length+1;
   const c=renderPageCard({index:maxIdx,judul:"",id:"",combinedText:""});
   pagesEl.appendChild(c);
@@ -480,6 +529,9 @@ $("#btnAddPage").onclick=addNewCard;
 
 $("#btnExpand").onclick=()=>$$("#pages .page").forEach(c=>c.open=true);
 $("#btnCollapse").onclick=()=>$$("#pages .page").forEach(c=>c.open=false);
+
+/* Init: muat daftar slug */
+populateSlugSelect();
 </script>
 </body>
 </html>
