@@ -192,27 +192,43 @@
     </section>
 
     <!-- Kanan -->
-    <section class="card">
-      <h2>Metadata Kitab</h2>
-      <div class="body">
-        <div class="row"><label>Judul</label><input id="judul" type="text"></div>
-        <div class="row"><label>Penulis</label><input id="penulis" type="text"></div>
-        <div class="row"><label>Penerjemah</label><input id="penerjemah" type="text"></div>
-        <div class="row"><label>Penerbit</label><input id="penerbit" type="text"></div>
-        <div class="row"><label>Status</label><input id="status" type="text"></div>
-        <div class="row"><label>Kategori</label><input id="category" type="text"></div>
-        <div class="row"><label>Cover URL</label><input id="coverUrl" type="text"></div>
-        <div class="row">
-          <label>Preview</label>
-          <img id="coverPreview" class="cover-prev" src="https://i.ibb.co/1KfX9Dy/placeholder-3x4.png" alt="Preview" style="width:120px;aspect-ratio:3/4;border:1px solid var(--line);border-radius:12px">
-        </div>
-        <div class="row"><label>Halaman</label><input id="halaman" type="number" min="0"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-          <button id="btnSaveMeta" class="btn pri">Simpan Metadata</button>
-          <button id="btnReloadMeta" class="btn">Muat Ulang</button>
-        </div>
+   <section class="card">
+  <h2>Metadata Kitab</h2>
+  <div class="body">
+    <div class="row"><label>Judul</label><input id="judul" type="text"></div>
+    <div class="row"><label>Penulis</label><input id="penulis" type="text"></div>
+    <div class="row"><label>Penerjemah</label><input id="penerjemah" type="text"></div>
+    <div class="row"><label>Penerbit</label><input id="penerbit" type="text"></div>
+    <div class="row"><label>Status</label><input id="status" type="text"></div>
+    <div class="row"><label>Kategori</label><input id="category" type="text"></div>
+    <div class="row"><label>Cover URL</label><input id="coverUrl" type="text"></div>
+    <div class="row">
+      <label>Preview</label>
+      <img id="coverPreview" class="cover-prev"
+           src="https://i.ibb.co/1KfX9Dy/placeholder-3x4.png"
+           alt="Preview"
+           style="width:120px;aspect-ratio:3/4;border:1px solid var(--line);border-radius:12px">
+    </div>
+
+    <!-- ⬇️ Tambahan: PDF URL + Aksi -->
+    <div class="row"><label>PDF URL</label>
+      <input id="pdfUrl" type="text" placeholder="https://.../file.pdf">
+    </div>
+    <div class="row">
+      <label>PDF</label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button id="btnOpenPdf" class="btn small">Buka PDF</button>
+        <span id="pdfHint" class="muted">Belum ada URL PDF</span>
       </div>
-    </section>
+    </div>
+
+    <div class="row"><label>Halaman</label><input id="halaman" type="number" min="0"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+      <button id="btnSaveMeta" class="btn pri">Simpan Metadata</button>
+      <button id="btnReloadMeta" class="btn">Muat Ulang</button>
+    </div>
+  </div>
+</section>
   </div>
 
   <!-- ToC -->
@@ -474,6 +490,8 @@ async function loadMeta(slug){
   $("#coverUrl").value=d.coverUrl||d.cover||"";
   $("#coverPreview").src=d.coverUrl||d.cover||"https://i.ibb.co/1KfX9Dy/placeholder-3x4.png";
   $("#halaman").value=d.halaman||0;
+  $("#pdfUrl").value = d.pdfUrl || "";
+  $("#pdfHint").textContent = d.pdfUrl ? "Siap dibuka" : "Belum ada URL PDF";
 
   // ToC (custom)
   tocData = Array.isArray(d.toc)? structuredClone(d.toc) : [];
@@ -482,6 +500,15 @@ async function loadMeta(slug){
 $("#coverUrl").addEventListener("input",e=>{
   $("#coverPreview").src=e.target.value.trim()||"https://i.ibb.co/1KfX9Dy/placeholder-3x4.png";
 });
+  $("#pdfUrl").addEventListener("input",(e)=>{
+  const u = e.target.value.trim();
+  $("#pdfHint").textContent = u ? "Siap dibuka" : "Belum ada URL PDF";
+});
+$("#btnOpenPdf").onclick = ()=>{
+  const u = ($("#pdfUrl").value||"").trim();
+  if(!u){ toast("Isi URL PDF dulu","err"); return; }
+  window.open(u, "_blank", "noopener");
+};
 async function saveMeta(){
   const slug=($("#slug").value||"").trim().toLowerCase(); if(!slug)return toast("Isi/pilih slug dulu","err");
   showSpin(true);
@@ -496,6 +523,7 @@ async function saveMeta(){
       status:($("#status").value||"").trim(),
       category:($("#category").value||"").trim(),
       coverUrl:($("#coverUrl").value||"").trim(),
+      pdfUrl: ($("#pdfUrl").value || "").trim(),
       ...(Number($("#halaman").value)?{halaman:Number($("#halaman").value)}:{})
     };
     if(!snap.exists()||!snap.data()?.createdAt){payload.createdAt=serverTimestamp();}
